@@ -3,6 +3,7 @@
 from picamera import PiCamera
 from time import sleep
 from PIL import Image, ImageStat, ImageFont, ImageDraw
+import time
 
 # full black: return 0
 # 1 white dot (800x600): 0.362
@@ -22,33 +23,24 @@ def brightnessImg( img_obj ):
     return stat.rms[0]
 
 camera = PiCamera()
-#camera.start_preview()
-#sleep(3)
-camera.capture('/tmp/picture.jpg')
-#camera.stop_preview()
+camera.start_preview()
+sleep(3)
+filename = "/tmp/IMG-" + time.strftime("%Y%m%d-%H%M%S") + ".jpg"
+print(filename)
+camera.capture(filename)
+camera.stop_preview()
 
 font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 16)
 # img = Image.new("RGBA", (200,200), (120,20,20))
-img = Image.open('/tmp/picture.jpg')
+img = Image.open(filename)
 draw = ImageDraw.Draw(img)
 draw.text((0,0), "Brightness: " + str(brightnessImg(img)), (255,255,0), font=font)
 # img.show()
-img.save("/tmp/pic111.jpg")
+img.save(filename[:-4] + "e.jpg")
+
 #camera.start_preview()
 #sleep(50)
 #camera.stop_preview()
-# print(brightness('/home/pi/tast1.jpg'))
-# print(brightness('/home/pi//tast2.jpg'))
-# print(brightness('/home/pi/tast3.jpg'))
-# print(brightness('/home/pi/teszt'))
-# print(brightness('/home/pi/teszt3.jpg'))
-# print(brightness('/home/pi/teszt4.jpg'))
-# print("----")
-# print(brightness('/home/pi/Pictures/black.jpg'))
-# print(brightness('/home/pi/Pictures/black_1dot.jpg'))
-# print(brightness('/home/pi/Pictures/black_1circle.jpg'))
-# print(brightness('/home/pi/Pictures/white.jpg'))
-
 
 #         with picamera.PiCamera() as camera:
 #             camera.start_preview()
