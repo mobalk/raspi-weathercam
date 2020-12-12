@@ -1,9 +1,9 @@
 # Copy this file to an appropriate place 
 # and adapt PathToUserAuthConfig in config.ini accordingly.
 [upload]
-user = exampleuser
-pwd = yourpwd
+User = exampleuser
+Pwd = yourpwd
 
 [email]
-user = exampleuser
-pwd = yourpwd
+User = exampleuser
+Pwd = yourpwd

@@ -1,78 +1,109 @@
 #!/usr/bin/env python3
 
-from picamera import PiCamera
+import picamera
 from time import sleep
 from PIL import Image, ImageStat, ImageFont, ImageDraw
 import time
 import sys
 import io
 import configparser
+import os.path
+from os import path
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
-print("Python version")
-print (sys.version)
+logging.debug("Python version: \n" + sys.version)
 
 # full black: return 0
 # full white: return 255
 # https://stackoverflow.com/questions/3490727/what-are-some-methods-to-analyze-image-brightness-using-python
 def brightness( img_obj ):
-    print(type(img_obj))
-    #print("brightImg " + type(img_obj))
     if isinstance(img_obj, str):
         im = Image.open(img_obj).convert('L')
-        print("converted ")
     else:
         im = img_obj.convert('L')
     stat = ImageStat.Stat(im)
     return stat.rms[0]
 
-config = configparser.ConfigParser()
-config.read('config.ini')
-res = config.get('camera', 'Resolution', fallback='')
-print("resolution: " + res)
+# Read config file
+def configinit():
+    global config
+    config = configparser.ConfigParser()
+    readconfig()
 
-camera = PiCamera()
-#camera = PiCamera(resolution = res)
-if res : camera.resolution = res
+    userauthconfig = config.get('app', 'PathToUserAuthConfig', fallback='')
+    logging.debug("PathToUserAuthConfig: {userauthconfig}")
+    if userauthconfig and path.exists(userauthconfig):
+        config.read(userauthconfig)
+        logging.debug("  {userauthconfig} read successfully")
 
-stream = io.BytesIO()
+def readconfig():
+    config.read('config.ini')
 
-camera.start_preview()
-sleep(3)
+def writetoimage(img, text):
+    font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 16)
+    draw = ImageDraw.Draw(img)
+    draw.text((0,0), text, (255,255,0), font=font)
 
-filename = "/tmp/IMG-" + time.strftime("%Y%m%d-%H%M%S") + ".jpg"
-print(filename)
+configinit()
 
-camera.capture(stream, format='jpeg')
+with picamera.PiCamera() as camera:
+    try:
+        # Configure camera
+        res = config.get('camera', 'Resolution', fallback='')
+        print("resolution: " + res)
+        if res : camera.resolution = res
 
-camera.stop_preview()
+        # Read all other configuration
+        qual = config.getint('jpg', 'Quality', fallback=90)
+        brTsh = config.getint('upload', 'BrightnessTreshold', fallback=10)
+        server = config.get('upload', 'FtpAddress', fallback='')
+        user = config.get('upload', 'User', fallback='')
+        pwd = config.get('upload', 'Pwd', fallback='')
+        secs2sleep = config.getint('camera', 'SecondsBetweenShots', fallback=10)
 
-# add brightness info
-stream.seek(0)
-img = Image.open(stream)
-font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 16)
-draw = ImageDraw.Draw(img)
-bright = brightness(img)
+        while True:
+            stream = io.BytesIO()
 
-draw.text((0,0), "Brightness: " + str(bright), (255,255,0), font=font)
+            camera.start_preview()
+            sleep(3)
+            camera.capture(stream, format='jpeg', quality=qual)
+            camera.stop_preview()
 
-# save
-qual = config.getint('jpg', 'Quality', fallback=90)
-img.save(filename[:-4] + "e.jpg", quality = qual)
+            filename = "/tmp/IMG-" + time.strftime("%Y%m%d-%H%M%S") + ".jpg"
 
-# upload
-brTsh = config.getint('upload', 'BrightnessTreshold', fallback=10)
-if bright > brTsh:
-    server = config.get('upload', 'FtpAddress', fallback='')
-    if server:
-        print("upload to " + server)
+            # get brightness info
+            stream.seek(0)
+            img = Image.open(stream)
+            bright = int(brightness(img))
+            logging.info(filename + ", brightness=" + str(bright))
+
+            # save
+            img.save(filename, quality = qual, optimize = True)
+
+            # upload
+            if bright > brTsh:
+                if server:
+                    print("upload to " + server + " as " + user)
+            else:
+                logging.debug("Skip to upload, brightness " + str(bright)
+                              + " under treshold " + str(brTsh))
+
+            sleep(secs2sleep)
+    #except:
+    #    logging.warning("Execption occured")
+    finally:
+        camera.stop_preview()
+        logging.warning("Finally block")
 
 
-# --- BACKUP ---
+# --- BACKUP ---:W
+
 #camera.start_preview()
 #sleep(500)
 #camera.stop_preview()
 
-print(brightness('/home/pi/tast1.jpg'))
+#print(brightness('/home/pi/tast1.jpg'))
 
 #         with picamera.PiCamera() as camera:
 #             camera.start_preview()
