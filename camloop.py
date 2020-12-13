@@ -73,14 +73,15 @@ def smartSleep(brightness, sleepTimer):
 
 
 def ftpUpload(img):
-    with FTP(host=config.get('upload','FtpAddress'),
-            user=config.get('upload','User'),
-            passwd=config.get('upload','Pwd')) as ftp:
+    server = config.get('upload','FtpAddress')
+    user= config.get('upload','User')
+    logging.debug("upload to " + server + " as " + user)
+    with FTP(host=server, user=user,
+             passwd=config.get('upload','Pwd')) as ftp:
         fp = open(img, 'rb')
         ftp.storbinary('STOR %s' % os.path.basename(img), fp, 1024)
         fp.close()
-        print("after upload " + img)
-
+        logging.info("... " + img + " uploaded")
 
 configinit()
 
@@ -100,8 +101,8 @@ with picamera.PiCamera() as camera:
             server = config.get('upload', 'FtpAddress', fallback='')
             user = config.get('upload', 'User', fallback='')
             pwd = config.get('upload', 'Pwd', fallback='')
-            sleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=10)
-            previewTimer = config.getint('camera', 'ShowPreviewBeforeCapture', fallback=10)
+            sleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=60)
+            previewTimer = config.getint('camera', 'ShowPreviewBeforeCapture', fallback=3)
             imgPath = config.get('app', 'ImageStorePath', fallback='/tmp/')
             darkCounter = 0
 
@@ -119,15 +120,17 @@ with picamera.PiCamera() as camera:
                 stream.seek(0)
                 img = Image.open(stream)
                 bright = int(brightness(img))
-                logging.info(filename + ", brightness=" + str(bright))
 
                 # save
                 img.save(filename, quality = qual, optimize = True)
 
+                filesize = round(os.stat(filename).st_size / 1024 * 10) / 10
+                logging.info(filename + ", size=" + str(filesize)
+                             + ", brightness=" + str(bright))
+
                 # upload
                 if bright > brTsh:
                     if server:
-                        print("upload to " + server + " as " + user)
                         ftpUpload(filename)
                 else:
                     logging.debug("Skip to upload, brightness " + str(bright)
