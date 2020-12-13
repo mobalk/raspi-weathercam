@@ -85,57 +85,67 @@ def ftpUpload(img):
 configinit()
 
 with picamera.PiCamera() as camera:
-    try:
-        # Configure camera
-        res = config.get('camera', 'Resolution', fallback='')
-        print("resolution: " + res)
-        if res : camera.resolution = res
+    while True: # extern loop that allows reconfiguring camera setup
+        try:
+            # Configure camera
+            logging.info("Re-read config")
+            readconfig()
+            res = config.get('camera', 'Resolution', fallback='')
+            print("resolution: " + res)
+            if res : camera.resolution = res
 
-        # Read all other configuration
-        qual = config.getint('jpg', 'Quality', fallback=90)
-        brTsh = config.getint('upload', 'BrightnessTreshold', fallback=10)
-        server = config.get('upload', 'FtpAddress', fallback='')
-        user = config.get('upload', 'User', fallback='')
-        pwd = config.get('upload', 'Pwd', fallback='')
-        sleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=10)
+            # Read all other configuration
+            qual = config.getint('jpg', 'Quality', fallback=90)
+            brTsh = config.getint('upload', 'BrightnessTreshold', fallback=10)
+            server = config.get('upload', 'FtpAddress', fallback='')
+            user = config.get('upload', 'User', fallback='')
+            pwd = config.get('upload', 'Pwd', fallback='')
+            sleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=10)
+            previewTimer = config.getint('camera', 'ShowPreviewBeforeCapture', fallback=10)
+            imgPath = config.get('app', 'ImageStorePath', fallback='/tmp/')
+            darkCounter = 0
 
-        darkCounter = 0
+            while True: # Intern loop for continous captures
+                stream = io.BytesIO()
 
-        while True:
-            stream = io.BytesIO()
+                camera.start_preview()
+                sleep(previewTimer)
+                camera.capture(stream, format='jpeg', quality=qual)
+                camera.stop_preview()
 
-            camera.start_preview()
-            sleep(3)
-            camera.capture(stream, format='jpeg', quality=qual)
-            camera.stop_preview()
+                filename = imgPath + "IMG-" + time.strftime("%Y%m%d-%H%M%S") + ".jpg"
 
-            filename = "/tmp/IMG-" + time.strftime("%Y%m%d-%H%M%S") + ".jpg"
+                # get brightness info
+                stream.seek(0)
+                img = Image.open(stream)
+                bright = int(brightness(img))
+                logging.info(filename + ", brightness=" + str(bright))
 
-            # get brightness info
-            stream.seek(0)
-            img = Image.open(stream)
-            bright = int(brightness(img))
-            logging.info(filename + ", brightness=" + str(bright))
+                # save
+                img.save(filename, quality = qual, optimize = True)
 
-            # save
-            img.save(filename, quality = qual, optimize = True)
+                # upload
+                if bright > brTsh:
+                    if server:
+                        print("upload to " + server + " as " + user)
+                        ftpUpload(filename)
+                else:
+                    logging.debug("Skip to upload, brightness " + str(bright)
+                                  + " under treshold " + str(brTsh))
 
-            # upload
-            if bright > brTsh:
-                if server:
-                    print("upload to " + server + " as " + user)
-                    ftpUpload(filename)
+                sleepTimer = smartSleep(bright, sleepTimer)
+                sleep(sleepTimer)
+        except KeyboardInterrupt:
+            print("\n\nEnter 'c' for [c]ontinue ar anything else to exit.")
+            userinput = input("Whats next?")
+            if userinput == 'c':
+                continue
             else:
-                logging.debug("Skip to upload, brightness " + str(bright)
-                              + " under treshold " + str(brTsh))
+                break
 
-            sleepTimer = smartSleep(bright, sleepTimer)
-            sleep(sleepTimer)
-    #except:
-    #    logging.warning("Execption occured")
-    finally:
-        camera.stop_preview()
-        logging.warning("Finally block")
+        finally:
+            camera.stop_preview()
+            logging.warning("Finally block")
 
 
 # --- BACKUP ---:W
