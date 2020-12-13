@@ -7,10 +7,12 @@ import time
 import sys
 import io
 import configparser
-import os.path
+import os
 from os import path
+import fileinput
+from ftplib import FTP
 import logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 logging.debug("Python version: \n" + sys.version)
 
@@ -70,6 +72,16 @@ def smartSleep(brightness, sleepTimer):
     return sleepTimer
 
 
+def ftpUpload(img):
+    with FTP(host=config.get('upload','FtpAddress'),
+            user=config.get('upload','User'),
+            passwd=config.get('upload','Pwd')) as ftp:
+        fp = open(img, 'rb')
+        ftp.storbinary('STOR %s' % os.path.basename(img), fp, 1024)
+        fp.close()
+        print("after upload " + img)
+
+
 configinit()
 
 with picamera.PiCamera() as camera:
@@ -112,6 +124,7 @@ with picamera.PiCamera() as camera:
             if bright > brTsh:
                 if server:
                     print("upload to " + server + " as " + user)
+                    ftpUpload(filename)
             else:
                 logging.debug("Skip to upload, brightness " + str(bright)
                               + " under treshold " + str(brTsh))
