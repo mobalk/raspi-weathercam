@@ -14,6 +14,8 @@ logging.basicConfig(level=logging.DEBUG)
 
 logging.debug("Python version: \n" + sys.version)
 
+SEC_PER_MIN = 60
+
 # full black: return 0
 # full white: return 255
 # https://stackoverflow.com/questions/3490727/what-are-some-methods-to-analyze-image-brightness-using-python
@@ -32,10 +34,10 @@ def configinit():
     readconfig()
 
     userauthconfig = config.get('app', 'PathToUserAuthConfig', fallback='')
-    logging.debug("PathToUserAuthConfig: {userauthconfig}")
+    logging.debug("PathToUserAuthConfig: " + userauthconfig)
     if userauthconfig and path.exists(userauthconfig):
         config.read(userauthconfig)
-        logging.debug("  {userauthconfig} read successfully")
+        logging.debug(userauthconfig + " read successfully")
 
 def readconfig():
     config.read('config.ini')
@@ -44,6 +46,29 @@ def writetoimage(img, text):
     font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 16)
     draw = ImageDraw.Draw(img)
     draw.text((0,0), text, (255,255,0), font=font)
+
+
+def smartSleep(brightness, sleepTimer):
+    global darkCounter
+    logging.debug("smartSleep >> br=" + str(brightness) + ", timer=" + str(sleepTimer)
+                  + ", darkCounter=" + str(darkCounter))
+    brTsh = config.getint('upload', 'BrightnessTreshold', fallback=10)
+    if brightness < brTsh / 3:
+        darkCounter += 1
+        if darkCounter % 5 == 0:
+            sleepTimer = min(15 * SEC_PER_MIN, sleepTimer * 2)
+            logging.info("Set capture timer to " + str(sleepTimer / SEC_PER_MIN) + " min")
+    else:
+        origTimer = config.getint('camera', 'SecondsBetweenShots', fallback=10)
+        darkCounter = 0
+        if sleepTimer != origTimer:
+            sleepTimer = origTimer
+            logging.info("Set capture timer back to " + str(sleepTimer) + " sec")
+
+    logging.debug("smartSleep <<  return timer=" + str(sleepTimer)
+                  + ", darkCounter=" + str(darkCounter))
+    return sleepTimer
+
 
 configinit()
 
@@ -60,7 +85,9 @@ with picamera.PiCamera() as camera:
         server = config.get('upload', 'FtpAddress', fallback='')
         user = config.get('upload', 'User', fallback='')
         pwd = config.get('upload', 'Pwd', fallback='')
-        secs2sleep = config.getint('camera', 'SecondsBetweenShots', fallback=10)
+        sleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=10)
+
+        darkCounter = 0
 
         while True:
             stream = io.BytesIO()
@@ -89,7 +116,8 @@ with picamera.PiCamera() as camera:
                 logging.debug("Skip to upload, brightness " + str(bright)
                               + " under treshold " + str(brTsh))
 
-            sleep(secs2sleep)
+            sleepTimer = smartSleep(bright, sleepTimer)
+            sleep(sleepTimer)
     #except:
     #    logging.warning("Execption occured")
     finally:
