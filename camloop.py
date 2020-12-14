@@ -151,23 +151,3 @@ with picamera.PiCamera() as camera:
             logging.warning("Finally block")
 
 
-# --- BACKUP ---:W
-
-#camera.start_preview()
-#sleep(500)
-#camera.stop_preview()
-
-#print(brightness('/home/pi/tast1.jpg'))
-
-#         with picamera.PiCamera() as camera:
-#             camera.start_preview()
-#             try:
-#                 for i, filename in enumerate(
-#                         camera.capture_continuous('image{counter:02d}.jpg')):
-#                     print(filename)
-#                     time.sleep(1)
-#                     if i == 59:
-#                         break
-#             finally:
-#                 camera.stop_preview()
-
