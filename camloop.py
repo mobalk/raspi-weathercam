@@ -12,11 +12,15 @@ from os import path
 import fileinput
 from ftplib import FTP
 import logging
-logging.basicConfig(level=logging.INFO)
+
+SEC_PER_MIN = 60
+LOGFILE = "weathercam.log"
+
+logging.basicConfig(filename=LOGFILE, level=logging.INFO)
+print("Logging to " + LOGFILE)
 
 logging.debug("Python version: \n" + sys.version)
 
-SEC_PER_MIN = 60
 
 # full black: return 0
 # full white: return 255
@@ -92,7 +96,7 @@ with picamera.PiCamera() as camera:
             logging.info("Re-read config")
             readconfig()
             res = config.get('camera', 'Resolution', fallback='')
-            print("resolution: " + res)
+            logging.info("resolution: " + res)
             if res : camera.resolution = res
 
             # Read all other configuration
