@@ -6,12 +6,12 @@ from PIL import Image, ImageStat, ImageFont, ImageDraw
 import time
 import sys
 import io
-import configparser
 import os
 from os import path
 import fileinput
 from ftplib import FTP
 import logging
+import config as conf
 
 SEC_PER_MIN = 60
 LOGFILE = "weathercam.log"
@@ -33,21 +33,6 @@ def brightness( img_obj ):
     stat = ImageStat.Stat(im)
     return stat.rms[0]
 
-# Read config file
-def configinit():
-    global config
-    config = configparser.ConfigParser()
-    readconfig()
-
-    userauthconfig = config.get('app', 'PathToUserAuthConfig', fallback='')
-    logging.debug("PathToUserAuthConfig: " + userauthconfig)
-    if userauthconfig and path.exists(userauthconfig):
-        config.read(userauthconfig)
-        logging.debug(userauthconfig + " read successfully")
-
-def readconfig():
-    config.read('config.ini')
-
 def writetoimage(img, text):
     font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 16)
     draw = ImageDraw.Draw(img)
@@ -58,11 +43,11 @@ def smartSleep(brightness, sleepTimer):
     global darkCounter
     logging.debug("smartSleep >> br=" + str(brightness) + ", timer=" + str(sleepTimer)
                   + ", darkCounter=" + str(darkCounter))
-    brTsh = config.getint('upload', 'BrightnessTreshold', fallback=10)
-    if brightness < brTsh / 3:
+    nightTsh = config.getint('upload', 'NightTreshold', fallback=4)
+    if brightness < nightTsh:
         darkCounter += 1
-        if darkCounter % 5 == 0:
-            sleepTimer = min(15 * SEC_PER_MIN, sleepTimer * 2)
+        if darkCounter % 3 == 0:
+            sleepTimer = min(15 * SEC_PER_MIN, sleepTimer * 3)
             logging.info("Set capture timer to " + str(sleepTimer / SEC_PER_MIN) + " min")
     else:
         origTimer = config.getint('camera', 'SecondsBetweenShots', fallback=10)
@@ -87,14 +72,14 @@ def ftpUpload(img):
         fp.close()
         logging.info("... " + img + " uploaded")
 
-configinit()
+config = conf.init()
 
 with picamera.PiCamera() as camera:
     while True: # extern loop that allows reconfiguring camera setup
         try:
             # Configure camera
             logging.info("Re-read config")
-            readconfig()
+            conf.read(config)
             res = config.get('camera', 'Resolution', fallback='')
             logging.info("resolution: " + res)
             if res : camera.resolution = res
@@ -132,8 +117,8 @@ with picamera.PiCamera() as camera:
                 logging.info(filename + ", size=" + str(filesize)
                              + ", brightness=" + str(bright))
 
-                # upload
-                if bright > brTsh:
+                # upload always
+                if True or bright > brTsh:
                     if server:
                         ftpUpload(filename)
                 else:
