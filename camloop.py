@@ -4,6 +4,7 @@ import picamera
 from time import sleep
 from PIL import Image, ImageStat, ImageFont, ImageDraw
 import time
+import datetime
 import sys
 import io
 import os
@@ -16,7 +17,7 @@ import config as conf
 SEC_PER_MIN = 60
 LOGFILE = "weathercam.log"
 
-logging.basicConfig(filename=LOGFILE, level=logging.INFO)
+logging.basicConfig(filename=LOGFILE, level=logging.DEBUG)
 print("Logging to " + LOGFILE)
 
 logging.debug("Python version: \n" + sys.version)
@@ -38,20 +39,36 @@ def writetoimage(img, text):
     draw = ImageDraw.Draw(img)
     draw.text((0,0), text, (255,255,0), font=font)
 
+def todayAt (hr, min=0, sec=0, micros=0):
+   now = datetime.datetime.now()
+   return now.replace(hour=hr, minute=min, second=sec, microsecond=micros)
 
 def smartSleep(brightness, sleepTimer):
     global darkCounter
+    global wakeupTime # mid of civil twilight
+
+    LONGEST_SLEEP = 20 * SEC_PER_MIN
+
     logging.debug("smartSleep >> br=" + str(brightness) + ", timer=" + str(sleepTimer)
                   + ", darkCounter=" + str(darkCounter))
     nightTsh = config.getint('upload', 'NightTreshold', fallback=4)
-    if brightness < nightTsh:
+    timeNow = datetime.datetime.now()
+
+    logging.debug('    nightTrsh: %d, uploadTrsh: %d, timeNow: %s, wakeupTime: %s',
+                  nightTsh, brTsh, timeNow, wakeupTime)
+    if (timeNow < todayAt(6) or timeNow > todayAt(12)) and brightness < nightTsh:
         darkCounter += 1
-        if darkCounter % 3 == 0:
-            sleepTimer = min(15 * SEC_PER_MIN, sleepTimer * 3)
+        if darkCounter % 3 == 0 and sleepTimer <= LONGEST_SLEEP:
+            sleepTimer = min(LONGEST_SLEEP, sleepTimer * 3)
             logging.info("Set capture timer to " + str(sleepTimer / SEC_PER_MIN) + " min")
     else:
-        origTimer = config.getint('camera', 'SecondsBetweenShots', fallback=10)
-        darkCounter = 0
+        if brightness > brTsh:
+            if darkCounter > 0:
+                wakeupTime = timeNow - datetime.timedelta(seconds=LONGEST_SLEEP)
+                darkCounter = 0
+                logging.info('    New wakeupTime: %s', wakeupTime)
+
+        origTimer = config.getint('camera', 'SecondsBetweenShots', fallback=60)
         if sleepTimer != origTimer:
             sleepTimer = origTimer
             logging.info("Set capture timer back to " + str(sleepTimer) + " sec")
@@ -65,14 +82,18 @@ def ftpUpload(img):
     server = config.get('upload','FtpAddress')
     user= config.get('upload','User')
     logging.debug("upload to " + server + " as " + user)
-    with FTP(host=server, user=user,
-             passwd=config.get('upload','Pwd')) as ftp:
-        fp = open(img, 'rb')
-        ftp.storbinary('STOR %s' % os.path.basename(img), fp, 1024)
-        fp.close()
-        logging.info("... " + img + " uploaded")
+    try:
+        with FTP(host=server, user=user,
+                 passwd=config.get('upload','Pwd')) as ftp:
+            fp = open(img, 'rb')
+            ftp.storbinary('STOR %s' % os.path.basename(img), fp, 1024)
+            fp.close()
+            logging.info("... " + img + " uploaded")
+    except Exception as ex:
+        logging.exception('ftpUpload caught an error')
 
 config = conf.init()
+wakeupTime = todayAt(6)
 
 with picamera.PiCamera() as camera:
     while True: # extern loop that allows reconfiguring camera setup
@@ -121,6 +142,7 @@ with picamera.PiCamera() as camera:
                 if True or bright > brTsh:
                     if server:
                         ftpUpload(filename)
+                        #pass
                 else:
                     logging.debug("Skip to upload, brightness " + str(bright)
                                   + " under treshold " + str(brTsh))
