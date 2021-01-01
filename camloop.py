@@ -90,7 +90,7 @@ def ftpUpload(img):
             fp.close()
             logging.info("... " + img + " uploaded")
     except Exception as ex:
-        logging.exception('ftpUpload caught an error')
+        logging.exception(time.strftime("%Y.%m.%d %H:%M") + ' | ftpUpload caught an error')
 
 config = conf.init()
 wakeupTime = todayAt(6)
@@ -120,6 +120,7 @@ with picamera.PiCamera() as camera:
                 stream = io.BytesIO()
 
                 camera.start_preview()
+
                 sleep(previewTimer)
                 camera.capture(stream, format='jpeg', quality=qual)
                 camera.stop_preview()
