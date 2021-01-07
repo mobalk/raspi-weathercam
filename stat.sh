@@ -5,11 +5,20 @@
 #	Number of images
 #	Total size in MiB
 #	Average file size in KiB
+#
+# Optional input parameter: directory where to scan the images.
+# Without this parameter the script looks up the config file where the images are stored.
 
-SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
-cd $SCRIPTPATH
+if [ "$1" != "" ]
+then
+	Dir="$1/"
+else
+	SCRIPTPATH="$( cd "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+	cd $SCRIPTPATH
 
-Dir=$(python3 config.py app ImageStorePath)
+	Dir=$(python3 config.py app ImageStorePath)
+fi
+
 echo "date, count, total size (M), average size (K)"
 
 for ff in `ls ${Dir}IMG*jpg | cut -d'-' -f 2| uniq`
