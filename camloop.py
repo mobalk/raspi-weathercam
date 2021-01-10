@@ -13,6 +13,7 @@ import fileinput
 from ftplib import FTP
 import logging
 import config as conf
+from fractions import Fraction
 
 SEC_PER_MIN = 60
 LOGFILE = "weathercam.log"
@@ -92,6 +93,12 @@ def ftpUpload(img):
     except Exception as ex:
         logging.exception(time.strftime("%Y.%m.%d %H:%M") + ' | ftpUpload caught an error')
 
+def logCameraSettings(camera):
+    logging.info('framerate: ' + str(camera.framerate)
+                 + ', iso: ' + str(camera.iso)
+                 + ', shutter speed: ' + str(camera.shutter_speed)
+                 + ', exposure speed: ' + str(camera.exposure_speed))
+
 config = conf.init()
 wakeupTime = todayAt(6)
 
@@ -101,7 +108,10 @@ with picamera.PiCamera() as camera:
             # Configure camera
             logging.info("Re-read config")
             conf.read(config)
-            res = config.get('camera', 'Resolution', fallback='')
+            if config.getboolean('camera', 'CropImage'):
+                res = config.get('camera', 'FullResolution', fallback='')
+            else:
+                res = config.get('camera', 'Resolution', fallback='')
             logging.info("resolution: " + res)
             if res : camera.resolution = res
 
@@ -123,6 +133,7 @@ with picamera.PiCamera() as camera:
 
                 sleep(previewTimer)
                 camera.capture(stream, format='jpeg', quality=qual)
+                logCameraSettings(camera)
                 camera.stop_preview()
 
                 filename = imgPath + "IMG-" + time.strftime("%Y%m%d-%H%M%S") + ".jpg"
@@ -131,6 +142,24 @@ with picamera.PiCamera() as camera:
                 stream.seek(0)
                 img = Image.open(stream)
                 bright = int(brightness(img))
+
+                # crop (if configured)
+                if config.getboolean('camera', 'CropImage'):
+                    left = config.getint('camera', 'BoxPositionX')
+                    top = config.getint('camera', 'BoxPositionY')
+                    right = left + config.getint('camera', 'BoxSizeX')
+                    bottom = top + config.getint('camera', 'BoxSizeY')
+
+                    logging.debug((left, top, right, bottom))
+                    im1 = img.crop((left, top, right, bottom))
+
+                    resizeX = config.getint('camera', 'ResizeX') 
+                    resizeY = resizeX \
+                              *  config.getint('camera', 'BoxSizeY') \
+                              / config.getint('camera', 'BoxSizeX')
+
+                    im1 = im1.resize((int(resizeX), int(resizeY)), resample = Image.LANCZOS)
+                    img = im1
 
                 # save
                 img.save(filename, quality = qual, optimize = True)
@@ -152,7 +181,7 @@ with picamera.PiCamera() as camera:
                 sleep(sleepTimer)
         except KeyboardInterrupt:
             print("\n\nEnter 'c' for [c]ontinue ar anything else to exit.")
-            userinput = input("Whats next?")
+            userinput = input("Whats next?\n")
             if userinput == 'c':
                 continue
             else:
