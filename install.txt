@@ -1,0 +1,30 @@
+#------ INSTALL -----
+# A few install steps that might be necessary on a new RPi
+sudo apt update
+sudo apt full-upgrade
+
+# crontab entry for viewerstats (idokep.hu)
+crontab -e
+59 5,9,13,17,21,23 * * * /home/pi/proj/raspi-weathercam/viewerstat.sh
+
+# if you have Camera HQ you might get problems with max. resolution.
+# Increase GPU memory to 256MB
+sudo raspi-config
+
+# if you need the thermometer
+pip3 install adafruit-circuitpython-dht
+sudo apt-get install libgpiod2
+
+# if you need a simple image editor for testing crop parameters
+sudo apt install mirage
+
+#------ START CAMERA ----
+python3 camloop.py
+
+# check log
+tail -f weathercam.log
+
+#------ MEASURE TEMPRATURE ----
+python3 thermometer.py >> temp.log &
+
+
