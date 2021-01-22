@@ -6,6 +6,8 @@ sudo apt full-upgrade
 # crontab entry for viewerstats (idokep.hu)
 crontab -e
 59 5,9,13,17,21,23 * * * /home/pi/proj/raspi-weathercam/viewerstat.sh
+# crontab entry to upload temperature to idokep.hu
+*/3 * * * *  /home/pi/proj/raspi-weathercam/sendTemperature.py
 
 # if you have Camera HQ you might get problems with max. resolution.
 # Increase GPU memory to 256MB
@@ -27,4 +29,9 @@ tail -f weathercam.log
 #------ MEASURE TEMPRATURE ----
 python3 thermometer.py >> temp.log &
 
+#--- pandas
+pip3 install pandas
+sudo apt-get install libatlas-base-dev  # a dependency needed for numpy
+
+sudo apt-get install python3-flask
 
