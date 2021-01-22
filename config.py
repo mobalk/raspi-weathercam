@@ -8,6 +8,8 @@ to get configuration values.
 Functions
     init
         Creates a new ConfigParser object and reads configuration files.
+        Attributes
+            Path to config file (optional). Default: config.ini
         Returns
             ConfigParser
     read(config)
@@ -25,14 +27,19 @@ from os import path
 import logging
 
 logger = logging.getLogger(__name__)
+configPath = 'config.ini'
 
-def init():
+def init(*args):
     config = configparser.ConfigParser()
+    if len(args) > 0:
+        global configPath
+        configPath = args[0]
     read(config)
     return config
 
 def read(config):
-    config.read('config.ini')
+    global configPath
+    config.read(configPath)
     userauthconfig = config.get('app', 'PathToUserAuthConfig', fallback='')
     logger.debug("PathToUserAuthConfig: " + userauthconfig)
     if userauthconfig and path.exists(userauthconfig):
