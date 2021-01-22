@@ -33,9 +33,11 @@ archiveUntil = time.time() - 7 * SEC_PER_DAY
 
 for filename in sorted(os.listdir(directory)):
     fPath = os.path.join(directory, filename)
-    newPath = os.path.join(directory, '/arch/', filename)
-    movePath = os.path.join(directory, '/archived/', filename)
-    logging.debug(fPath)
+    newPath = os.path.join(directory, 'arch', filename)
+    movePath = os.path.join(directory, 'archived', filename)
+    logging.debug("file=" + fPath
+                  + " new=" + newPath
+                  + " move=" + movePath)
 
     if os.path.isfile(fPath) and os.stat(fPath).st_mtime < archiveUntil:
         im1 = Image.open(fPath)
