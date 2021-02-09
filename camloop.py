@@ -44,41 +44,6 @@ def todayAt (hr, min=0, sec=0, micros=0):
    now = datetime.datetime.now()
    return now.replace(hour=hr, minute=min, second=sec, microsecond=micros)
 
-def smartSleep(brightness, sleepTimer):
-    global darkCounter
-    global wakeupTime # mid of civil twilight
-
-    LONGEST_SLEEP = 15 * SEC_PER_MIN
-
-    logging.debug("smartSleep >> br=" + str(brightness) + ", timer=" + str(sleepTimer)
-                  + ", darkCounter=" + str(darkCounter))
-    nightTsh = config.getint('upload', 'NightTreshold', fallback=4)
-    timeNow = datetime.datetime.now()
-
-    logging.debug('    nightTrsh: %d, uploadTrsh: %d, timeNow: %s, wakeupTime: %s',
-                  nightTsh, brTsh, timeNow, wakeupTime)
-    if (timeNow < todayAt(6) or timeNow > todayAt(12)) and brightness < nightTsh:
-        darkCounter += 1
-        if darkCounter % 3 == 0 and sleepTimer <= LONGEST_SLEEP:
-            sleepTimer = min(LONGEST_SLEEP, sleepTimer * 3)
-            logging.info("Set capture timer to " + str(sleepTimer / SEC_PER_MIN) + " min")
-    else:
-        if brightness > brTsh:
-            if darkCounter > 0:
-                wakeupTime = timeNow - datetime.timedelta(seconds=LONGEST_SLEEP)
-                darkCounter = 0
-                logging.info('    New wakeupTime: %s', wakeupTime)
-
-        origTimer = config.getint('camera', 'SecondsBetweenShots', fallback=60)
-        if sleepTimer != origTimer:
-            sleepTimer = origTimer
-            logging.info("Set capture timer back to " + str(sleepTimer) + " sec")
-
-    logging.debug("smartSleep <<  return timer=" + str(sleepTimer)
-                  + ", darkCounter=" + str(darkCounter))
-    return sleepTimer
-
-
 def ftpUpload(img):
     server = config.get('upload','FtpAddress')
     user= config.get('upload','User')
@@ -127,12 +92,11 @@ with picamera.PiCamera() as camera:
             server = config.get('upload', 'FtpAddress', fallback='')
             user = config.get('upload', 'User', fallback='')
             pwd = config.get('upload', 'Pwd', fallback='')
-            defaultSleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=60)
+            sleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=60)
             previewTimer = config.getint('camera', 'ShowPreviewBeforeCapture', fallback=3)
             imgPath = config.get('app', 'ImageStorePath', fallback='/tmp/')
             darkCounter = 0
             manualExpoMode = False
-            sleepTimer = defaultSleepTimer
 
             MAX_SS = 6 # longest shutter speed
             camera.framerate = Fraction(1, MAX_SS)
@@ -211,10 +175,10 @@ with picamera.PiCamera() as camera:
                     ftpUpload(filename)
                     #pass
 
-                sleepTimer = smartSleep(bright, sleepTimer)
                 if manualExpoMode:
-                    sleepTimer = max(sleepTimer, 5 * SEC_PER_MIN)
-                sleep(sleepTimer)
+                    sleep(5 * sleepTimer)
+                else:
+                    sleep(sleepTimer)
         except KeyboardInterrupt:
             print("\n\nEnter 'c' for [c]ontinue ar anything else to exit.")
             userinput = input("Whats next?\n")
