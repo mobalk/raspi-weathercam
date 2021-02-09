@@ -48,7 +48,7 @@ def smartSleep(brightness, sleepTimer):
     global darkCounter
     global wakeupTime # mid of civil twilight
 
-    LONGEST_SLEEP = 20 * SEC_PER_MIN
+    LONGEST_SLEEP = 15 * SEC_PER_MIN
 
     logging.debug("smartSleep >> br=" + str(brightness) + ", timer=" + str(sleepTimer)
                   + ", darkCounter=" + str(darkCounter))
@@ -93,11 +93,17 @@ def ftpUpload(img):
     except Exception as ex:
         logging.exception(time.strftime("%Y.%m.%d %H:%M") + ' | ftpUpload caught an error')
 
-def logCameraSettings(camera):
-    logging.info('framerate: ' + str(camera.framerate)
-                 + ', iso: ' + str(camera.iso)
-                 + ', shutter speed: ' + str(camera.shutter_speed)
-                 + ', exposure speed: ' + str(camera.exposure_speed))
+def logCameraSettings(camera, brigth = None):
+    logging.info('CSV, CAM, '
+                 + time.strftime("%Y.%m.%d %H:%M")
+                 + ', exp_mode= ' + camera.exposure_mode
+                 + ', framerate= ' + str(camera.framerate)
+                 + ', iso= ' + str(camera.iso)
+                 + ', shutter_speed= ' + str(camera.shutter_speed)
+                 + ', digital_gain= ' + str(float(camera.digital_gain))
+                 + ', analog_gain= ' + str(float(camera.analog_gain))
+                 + ', exposure_speed= ' + str(camera.exposure_speed)
+                 + ', brightness= ' + str(brigth))
 
 config = conf.init()
 wakeupTime = todayAt(6)
@@ -121,27 +127,31 @@ with picamera.PiCamera() as camera:
             server = config.get('upload', 'FtpAddress', fallback='')
             user = config.get('upload', 'User', fallback='')
             pwd = config.get('upload', 'Pwd', fallback='')
-            sleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=60)
+            defaultSleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=60)
             previewTimer = config.getint('camera', 'ShowPreviewBeforeCapture', fallback=3)
             imgPath = config.get('app', 'ImageStorePath', fallback='/tmp/')
             darkCounter = 0
+            manualExpoMode = False
+            sleepTimer = defaultSleepTimer
+
+            MAX_SS = 6 # longest shutter speed
+            camera.framerate = Fraction(1, MAX_SS)
+            camera.exposure_mode = 'night'
 
             while True: # Intern loop for continous captures
                 stream = io.BytesIO()
 
-                camera.start_preview()
-
+                #camera.start_preview()
                 sleep(previewTimer)
                 camera.capture(stream, format='jpeg', quality=qual)
-                logCameraSettings(camera)
-                camera.stop_preview()
+                #camera.stop_preview()
 
                 filename = imgPath + "IMG-" + time.strftime("%Y%m%d-%H%M%S") + ".jpg"
 
-                # get brightness info
                 stream.seek(0)
                 img = Image.open(stream)
-                bright = int(brightness(img))
+
+                logCameraSettings(camera, int(brightness(img)))
 
                 # crop (if configured)
                 if config.getboolean('camera', 'CropImage'):
@@ -164,20 +174,46 @@ with picamera.PiCamera() as camera:
                 # save
                 img.save(filename, quality = qual, optimize = True)
 
+                # get brightness info of cropped img
+                bright = int(brightness(img))
+
+                logging.debug("cropped brightness=%d, shutterspeed=%d", bright, camera.shutter_speed)
+                if bright < 20 and camera.shutter_speed < int((MAX_SS + 0.1) * 1000 * 1000):
+                    if not manualExpoMode:
+                        manualExpoMode = True
+                        sleep(previewTimer)     # sleep to fix gain values
+                        camera.exposure_mode = 'off'
+                        camera.shutter_speed = camera.exposure_speed
+                        camera.iso = 400
+
+                    camera.shutter_speed += 500 * 1000 # add 0.5 sec
+                    logging.debug("increased shutterspeed=%d", camera.shutter_speed)
+                    continue
+                if manualExpoMode and bright > 30:
+                    camera.shutter_speed -= 500 * 1000
+
+                    if camera.shutter_speed < 500 * 1000: # turn off manual expo as second step
+                        camera.shutter_speed = 0
+                        camera.exposure_mode = 'night'
+                        manualExpoMode = False
+                        camera.iso = 0
+                    elif camera.shutter_speed < 1000 * 1000: # half the iso as first step
+                        camera.iso = 200
+
+                    logging.debug("reduced shutterspeed=%d", camera.shutter_speed)
+
                 filesize = round(os.stat(filename).st_size / 1024 * 10) / 10
                 logging.info(filename + ", size=" + str(filesize)
                              + ", brightness=" + str(bright))
 
                 # upload always
-                if True or bright > brTsh:
-                    if server:
-                        ftpUpload(filename)
-                        #pass
-                else:
-                    logging.debug("Skip to upload, brightness " + str(bright)
-                                  + " under treshold " + str(brTsh))
+                if server:
+                    ftpUpload(filename)
+                    #pass
 
                 sleepTimer = smartSleep(bright, sleepTimer)
+                if manualExpoMode:
+                    sleepTimer = max(sleepTimer, 5 * SEC_PER_MIN)
                 sleep(sleepTimer)
         except KeyboardInterrupt:
             print("\n\nEnter 'c' for [c]ontinue ar anything else to exit.")
@@ -188,7 +224,6 @@ with picamera.PiCamera() as camera:
                 break
 
         finally:
-            camera.stop_preview()
             logging.warning("Finally block")
 
 
