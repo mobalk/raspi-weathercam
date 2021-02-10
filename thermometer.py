@@ -48,5 +48,5 @@ with conn:
             dhtDevice.exit()
             raise error
 
-        time.sleep(60)
+        time.sleep(45)
         sleepException = 3.0
