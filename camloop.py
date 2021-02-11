@@ -70,6 +70,66 @@ def logCameraSettings(camera, brigth = None):
                  + ', exposure_speed= ' + str(camera.exposure_speed)
                  + ', brightness= ' + str(brigth))
 
+# Wait until analog gain and digital gain stabilizes around some values
+def stabilizeCameraGain(camera):
+    prevAnGain = camera.analog_gain
+    prevDigGain = camera.digital_gain
+    sleep(3)
+    while camera.analog_gain != prevAnGain or camera.digital_gain != prevDigGain:
+        prevAnGain = camera.analog_gain
+        prevDigGain = camera.digital_gain
+        print(float(prevAnGain), float(prevDigGain), camera.exposure_speed)
+        sleep(3)
+
+# Switch between auto exposure and manual exposure based on brightness
+# Adjust shutter speed in manual mode with a smooth transition.
+def adjustCameraExposureMode(camera, brigth):
+    global manualExpoMode
+    global twilightStart
+    global decreaseSS
+    skipCurrentLoop = False
+
+    logging.debug("cropped brightness=%d, shutterspeed=%d", bright, camera.shutter_speed)
+
+    # Handle dark scene
+    if bright < 20:
+        if not manualExpoMode:
+            manualExpoMode = True
+            stabilizeCameraGain(camera)
+            camera.exposure_mode = 'off'
+            camera.framerate = Fraction(1, MAX_SS)
+            camera.shutter_speed = camera.exposure_speed
+            logging.debug("set manualExpoMode, shutterspeed=%d", camera.shutter_speed)
+            skipCurrentLoop = True
+        elif camera.shutter_speed < int((MAX_SS) * 1000 * 1000):
+            camera.shutter_speed += increaseSS
+            logging.debug("increased shutterspeed=%d", camera.shutter_speed)
+            sleep(6) # give some time for adaptation
+            skipCurrentLoop = True
+        else:
+            logging.warning('Too dark scene. ¯\_(ツ)_/¯')
+            sleep(15 * SEC_PER_MIN)
+
+    # Handle bright scene in manual mode
+    if manualExpoMode and bright > 30:
+        if twilightStart <= todayAt(0):
+            twilightStart = datetime.datetime.now()
+            # try to reach 0.45 sec shutter speed in 30 minutes
+            iterations = 30 * SEC_PER_MIN / nightSleepTimer
+            dSS = camera.exposure_speed - (450 * 1000)
+            decreaseSS = int(dSS / iterations)
+            logging.debug('twilight start at ' + twilightStart + ', decreaseSS=' + decreaseSS)
+
+        camera.shutter_speed -= decreaseSS
+
+        if bright > 100 or camera.shutter_speed < 500 * 1000:
+            camera.shutter_speed = 0
+            camera.exposure_mode = 'night'
+            manualExpoMode = False
+
+        logging.debug("reduced shutterspeed=%d", camera.shutter_speed)
+    return skipCurrentLoop
+
 config = conf.init()
 
 with picamera.PiCamera() as camera:
@@ -146,45 +206,9 @@ with picamera.PiCamera() as camera:
                 # get brightness info of cropped img
                 bright = int(brightness(img))
 
-                logging.debug("cropped brightness=%d, shutterspeed=%d", bright, camera.shutter_speed)
-                if bright < 16 and camera.shutter_speed < int((MAX_SS + 0.01) * 1000 * 1000):
-                    if not manualExpoMode:
-                        manualExpoMode = True
-                        prevAnGain = camera.analog_gain
-                        prevDigGain = camera.digital_gain
-                        sleep(3)
-                        while camera.analog_gain != prevAnGain or camera.digital_gain != prevDigGain:
-                            prevAnGain = camera.analog_gain
-                            prevDigGain = camera.digital_gain
-                            print(float(prevAnGain), float(prevDigGain), camera.exposure_speed)
-                            sleep(3)
-                        camera.exposure_mode = 'off'
-                        camera.framerate = Fraction(1, MAX_SS)
-                        camera.shutter_speed = camera.exposure_speed
-                        continue
-
-                    camera.shutter_speed += increaseSS
-                    logging.debug("increased shutterspeed=%d", camera.shutter_speed)
-                    sleep(6) # give some time for adaptation
+                skipThisLoop = adjustCameraExposureMode(camera, bright)
+                if skipThisLoop:
                     continue
-
-                if manualExpoMode and bright > 30:
-                    if twilightStart <= todayAt(0):
-                        twilightStart = datetime.datetime.now()
-                        iterations = 30 * SEC_PER_MIN / nightSleepTimer
-                        dSS = camera.exposure_speed - (450 * 1000)
-                        decreaseSS = int(dSS / iterations)
-                        logger.debug('twilight start at ' + twilightStart
-                                     + ', decreaseSS=' + decreaseSS)
-
-                    camera.shutter_speed -= decreaseSS
-
-                    if bright > 100 or camera.shutter_speed < 500 * 1000:
-                        camera.shutter_speed = 0
-                        camera.exposure_mode = 'night'
-                        manualExpoMode = False
-
-                    logging.debug("reduced shutterspeed=%d", camera.shutter_speed)
 
                 filesize = round(os.stat(filename).st_size / 1024 * 10) / 10
                 logging.info(filename + ", size=" + str(filesize)
