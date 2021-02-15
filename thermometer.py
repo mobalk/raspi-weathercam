@@ -5,6 +5,13 @@ import board
 import adafruit_dht
 import sqlite3
 import config
+import logging
+
+LOGFILE = "temperature.log"
+
+logging.basicConfig(filename=LOGFILE, level=logging.INFO)
+print("Logging to " + LOGFILE)
+
 
 # Initial the dht device, with data pin connected to:
 dhtDevice = adafruit_dht.DHT22(board.D4, use_pulseio=False)
@@ -29,18 +36,14 @@ with conn:
             # Print the values to the serial port
             temperature_c = dhtDevice.temperature
             humidity = dhtDevice.humidity
-            print(
-                time.strftime("%Y-%m-%d %H:%M:%S, ") 
-                + "Temp: {:.1f} C,    Humidity: {}% ".format(
-                    temperature_c, humidity
-                )
-            )
+            logging.info(time.strftime("%Y-%m-%d %H:%M:%S, ")
+                         + "Temp: {:.1f} C,    Humidity: {}% ".format(temperature_c, humidity))
             cur.execute("INSERT INTO DHT_data values(datetime('now'), (?), (?))", (temperature_c, humidity))
             conn.commit()
 
         except RuntimeError as error:
             # Errors happen fairly often, DHT's are hard to read, just keep going
-            print(time.strftime("%Y-%m-%d %H:%M:%S"), error.args[0])
+            logging.warning(time.strftime("%Y-%m-%d %H:%M:%S ") + error.args[0])
             time.sleep(sleepException)
             sleepException *= 2
             continue

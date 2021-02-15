@@ -35,11 +35,6 @@ def brightness( img_obj ):
     stat = ImageStat.Stat(im)
     return stat.rms[0]
 
-def writetoimage(img, text):
-    font = ImageFont.truetype("/usr/share/fonts/dejavu/DejaVuSans.ttf", 16)
-    draw = ImageDraw.Draw(img)
-    draw.text((0,0), text, (255,255,0), font=font)
-
 def todayAt (hr, min=0, sec=0, micros=0):
    now = datetime.datetime.now()
    return now.replace(hour=hr, minute=min, second=sec, microsecond=micros)
@@ -108,17 +103,17 @@ def adjustCameraExposureMode(camera, brigth):
             skipCurrentLoop = True
         else:
             logging.warning('Too dark scene. ¯\_(ツ)_/¯')
-            sleep(15 * SEC_PER_MIN)
+            sleep(5 * SEC_PER_MIN)
 
     # Handle bright scene in manual mode
     if manualExpoMode and bright > 30:
         if twilightStart <= todayAt(0):
             twilightStart = datetime.datetime.now()
-            # try to reach 0.45 sec shutter speed in 30 minutes
-            iterations = 30 * SEC_PER_MIN / nightSleepTimer
+            # try to reach 0.45 sec shutter speed in 15 minutes
+            iterations = 15 * SEC_PER_MIN / nightSleepTimer
             dSS = camera.exposure_speed - (450 * 1000)
             decreaseSS = int(dSS / iterations)
-            logging.debug('twilight start at ' + twilightStart + ', decreaseSS=' + decreaseSS)
+            logging.debug('twilight start at ' + str(twilightStart) + ', decreaseSS=' + str(decreaseSS))
 
         camera.shutter_speed -= decreaseSS
 
@@ -127,7 +122,7 @@ def adjustCameraExposureMode(camera, brigth):
             camera.exposure_mode = 'night'
             manualExpoMode = False
 
-        logging.debug("reduced shutterspeed=%d", camera.shutter_speed)
+        logging.debug("reduced shutterspeed=%d (by %d)", camera.shutter_speed, decreaseSS)
     return skipCurrentLoop
 
 config = conf.init()
