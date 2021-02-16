@@ -16,13 +16,6 @@ import config as conf
 from fractions import Fraction
 
 SEC_PER_MIN = 60
-LOGFILE = "weathercam.log"
-
-logging.basicConfig(filename=LOGFILE, level=logging.DEBUG)
-print("Logging to " + LOGFILE)
-
-logging.debug("Python version: \n" + sys.version)
-
 
 # full black: return 0
 # full white: return 255
@@ -53,7 +46,7 @@ def ftpUpload(img):
     except Exception as ex:
         logging.exception(time.strftime("%Y.%m.%d %H:%M") + ' | ftpUpload caught an error')
 
-def logCameraSettings(camera, brigth = None):
+def logCameraSettings(camera, bright = None):
     logging.info('CSV, CAM, '
                  + time.strftime("%Y.%m.%d %H:%M")
                  + ', exp_mode= ' + camera.exposure_mode
@@ -63,7 +56,7 @@ def logCameraSettings(camera, brigth = None):
                  + ', digital_gain= ' + str(float(camera.digital_gain))
                  + ', analog_gain= ' + str(float(camera.analog_gain))
                  + ', exposure_speed= ' + str(camera.exposure_speed)
-                 + ', brightness= ' + str(brigth))
+                 + ', brightness= ' + str(bright))
 
 # Wait until analog gain and digital gain stabilizes around some values
 def stabilizeCameraGain(camera):
@@ -78,10 +71,14 @@ def stabilizeCameraGain(camera):
 
 # Switch between auto exposure and manual exposure based on brightness
 # Adjust shutter speed in manual mode with a smooth transition.
-def adjustCameraExposureMode(camera, brigth):
+def adjustCameraExposureMode(camera, bright):
     global manualExpoMode
     global twilightStart
     global decreaseSS
+    MAX_SS = 6 # longest shutter speed in sec
+    increaseSS = 300 * 1000 # increase shutter speed in manual mode (uSec)
+    decreaseSS = 300 * 1000 # decrease shutter speed in manual mode (uSec)
+
     skipCurrentLoop = False
 
     logging.debug("cropped brightness=%d, shutterspeed=%d", bright, camera.shutter_speed)
@@ -125,108 +122,114 @@ def adjustCameraExposureMode(camera, brigth):
         logging.debug("reduced shutterspeed=%d (by %d)", camera.shutter_speed, decreaseSS)
     return skipCurrentLoop
 
-config = conf.init()
+def main():
+    global manualExpoMode
+    global twilightStart
 
-with picamera.PiCamera() as camera:
-    while True: # extern loop that allows reconfiguring camera setup
-        try:
-            # Configure camera
-            logging.info("Re-read config")
-            conf.read(config)
-            if config.getboolean('camera', 'CropImage'):
-                res = config.get('camera', 'FullResolution', fallback='')
-            else:
-                res = config.get('camera', 'Resolution', fallback='')
-            logging.info("resolution: " + res)
-            if res : camera.resolution = res
+    LOGFILE = "weathercam.log"
+    logging.basicConfig(filename=LOGFILE, level=logging.DEBUG)
+    print("Logging to " + LOGFILE)
+    logging.debug("Python version: \n" + sys.version)
 
-            # Read all other configuration
-            qual = config.getint('jpg', 'Quality', fallback=90)
-            brTsh = config.getint('upload', 'BrightnessTreshold', fallback=10)
-            server = config.get('upload', 'FtpAddress', fallback='')
-            user = config.get('upload', 'User', fallback='')
-            pwd = config.get('upload', 'Pwd', fallback='')
-            sleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=60)
-            nightSleepTimer = config.getint('camera', 'SecondsBetweenShotsAtNight', fallback=120)
-            previewTimer = config.getint('camera', 'ShowPreviewBeforeCapture', fallback=3)
-            imgPath = config.get('app', 'ImageStorePath', fallback='/tmp/')
-            darkCounter = 0
-            manualExpoMode = False
-            twilightStart = todayAt(0)
+    config = conf.init()
 
-            MAX_SS = 6 # longest shutter speed in sec
-            increaseSS = 300 * 1000 # increase shutter speed in manual mode (uSec)
-            decreaseSS = 300 * 1000 # decrease shutter speed in manual mode (uSec)
-
-            camera.exposure_mode = 'night'
-            sleep(6) # quickly adapt analog/digital gain, only then slow down framerate
-            camera.framerate = Fraction(2, 1) # 'night' mode can handle max 0.5 sec shutter speed
-
-            while True: # Intern loop for continous captures
-                stream = io.BytesIO()
-
-                #camera.start_preview()
-                sleep(previewTimer)
-                camera.capture(stream, format='jpeg', quality=qual)
-                #camera.stop_preview()
-
-                filename = imgPath + "IMG-" + time.strftime("%Y%m%d-%H%M%S") + ".jpg"
-
-                stream.seek(0)
-                img = Image.open(stream)
-
-                logCameraSettings(camera, int(brightness(img)))
-
-                # crop (if configured)
+    with picamera.PiCamera() as camera:
+        while True: # extern loop that allows reconfiguring camera setup
+            try:
+                # Configure camera
+                logging.info("Re-read config")
+                conf.read(config)
                 if config.getboolean('camera', 'CropImage'):
-                    left = config.getint('camera', 'BoxPositionX')
-                    top = config.getint('camera', 'BoxPositionY')
-                    right = left + config.getint('camera', 'BoxSizeX')
-                    bottom = top + config.getint('camera', 'BoxSizeY')
-
-                    logging.debug((left, top, right, bottom))
-                    im1 = img.crop((left, top, right, bottom))
-
-                    resizeX = config.getint('camera', 'ResizeX') 
-                    resizeY = resizeX \
-                              *  config.getint('camera', 'BoxSizeY') \
-                              / config.getint('camera', 'BoxSizeX')
-
-                    im1 = im1.resize((int(resizeX), int(resizeY)), resample = Image.LANCZOS)
-                    img = im1
-
-                # save
-                img.save(filename, quality = qual, optimize = True)
-
-                # get brightness info of cropped img
-                bright = int(brightness(img))
-
-                skipThisLoop = adjustCameraExposureMode(camera, bright)
-                if skipThisLoop:
-                    continue
-
-                filesize = round(os.stat(filename).st_size / 1024 * 10) / 10
-                logging.info(filename + ", size=" + str(filesize)
-                             + ", brightness=" + str(bright))
-
-                # upload always
-                if server:
-                    ftpUpload(filename)
-                    #pass
-
-                if manualExpoMode:
-                    sleep(nightSleepTimer)
+                    res = config.get('camera', 'FullResolution', fallback='')
                 else:
-                    sleep(sleepTimer)
-        except KeyboardInterrupt:
-            print("\n\nEnter 'c' for [c]ontinue ar anything else to exit.")
-            userinput = input("Whats next?\n")
-            if userinput == 'c':
-                continue
-            else:
-                break
+                    res = config.get('camera', 'Resolution', fallback='')
+                logging.info("resolution: " + res)
+                if res : camera.resolution = res
 
-        finally:
-            logging.warning("Finally block")
+                # Read all other configuration
+                qual = config.getint('jpg', 'Quality', fallback=90)
+                brTsh = config.getint('upload', 'BrightnessTreshold', fallback=10)
+                server = config.get('upload', 'FtpAddress', fallback='')
+                user = config.get('upload', 'User', fallback='')
+                pwd = config.get('upload', 'Pwd', fallback='')
+                sleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=60)
+                nightSleepTimer = config.getint('camera', 'SecondsBetweenShotsAtNight', fallback=120)
+                previewTimer = config.getint('camera', 'ShowPreviewBeforeCapture', fallback=3)
+                imgPath = config.get('app', 'ImageStorePath', fallback='/tmp/')
+                darkCounter = 0
+                manualExpoMode = False
+                twilightStart = todayAt(0)
 
+                camera.exposure_mode = 'night'
+                sleep(6) # quickly adapt analog/digital gain, only then slow down framerate
+                camera.framerate = Fraction(2, 1) # 'night' mode can handle max 0.5 sec shutter speed
 
+                while True: # Intern loop for continous captures
+                    stream = io.BytesIO()
+
+                    #camera.start_preview()
+                    sleep(previewTimer)
+                    camera.capture(stream, format='jpeg', quality=qual)
+                    #camera.stop_preview()
+
+                    filename = imgPath + "IMG-" + time.strftime("%Y%m%d-%H%M%S") + ".jpg"
+
+                    stream.seek(0)
+                    img = Image.open(stream)
+
+                    logCameraSettings(camera, int(brightness(img)))
+
+                    # crop (if configured)
+                    if config.getboolean('camera', 'CropImage'):
+                        left = config.getint('camera', 'BoxPositionX')
+                        top = config.getint('camera', 'BoxPositionY')
+                        right = left + config.getint('camera', 'BoxSizeX')
+                        bottom = top + config.getint('camera', 'BoxSizeY')
+
+                        logging.debug((left, top, right, bottom))
+                        im1 = img.crop((left, top, right, bottom))
+
+                        resizeX = config.getint('camera', 'ResizeX') 
+                        resizeY = resizeX \
+                                  *  config.getint('camera', 'BoxSizeY') \
+                                  / config.getint('camera', 'BoxSizeX')
+
+                        im1 = im1.resize((int(resizeX), int(resizeY)), resample = Image.LANCZOS)
+                        img = im1
+
+                    # save
+                    img.save(filename, quality = qual, optimize = True)
+
+                    # get brightness info of cropped img
+                    bright = int(brightness(img))
+
+                    skipThisLoop = adjustCameraExposureMode(camera, bright)
+                    if skipThisLoop:
+                        continue
+
+                    filesize = round(os.stat(filename).st_size / 1024 * 10) / 10
+                    logging.info(filename + ", size=" + str(filesize)
+                                 + ", brightness=" + str(bright))
+
+                    # upload always
+                    if server:
+                        ftpUpload(filename)
+                        #pass
+
+                    if manualExpoMode:
+                        sleep(nightSleepTimer)
+                    else:
+                        sleep(sleepTimer)
+            except KeyboardInterrupt:
+                print("\n\nEnter 'c' for [c]ontinue ar anything else to exit.")
+                userinput = input("Whats next?\n")
+                if userinput == 'c':
+                    continue
+                else:
+                    break
+
+            finally:
+                logging.warning("Finally block", exc_info=True)
+
+if __name__ == "__main__":
+    main()
