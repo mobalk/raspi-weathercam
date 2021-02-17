@@ -32,7 +32,7 @@ def todayAt (hr, min=0, sec=0, micros=0):
    now = datetime.datetime.now()
    return now.replace(hour=hr, minute=min, second=sec, microsecond=micros)
 
-def ftpUpload(img):
+def ftpUpload(config, img):
     server = config.get('upload','FtpAddress')
     user= config.get('upload','User')
     logging.debug("upload to " + server + " as " + user)
@@ -213,7 +213,7 @@ def main():
 
                     # upload always
                     if server:
-                        ftpUpload(filename)
+                        ftpUpload(config, filename)
                         #pass
 
                     if manualExpoMode:
