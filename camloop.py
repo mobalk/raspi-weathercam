@@ -2,14 +2,12 @@
 
 import picamera
 from time import sleep
-from PIL import Image, ImageStat, ImageFont, ImageDraw
+from PIL import Image, ImageStat
 import time
 import datetime
 import sys
 import io
 import os
-from os import path
-import fileinput
 from ftplib import FTP
 import logging
 import config as conf
@@ -43,7 +41,7 @@ def ftpUpload(config, img):
             ftp.storbinary('STOR %s' % os.path.basename(img), fp, 1024)
             fp.close()
             logging.info("... " + img + " uploaded")
-    except Exception as ex:
+    except Exception:
         logging.exception(time.strftime("%Y.%m.%d %H:%M") + ' | ftpUpload caught an error')
 
 def logCameraSettings(camera, bright = None):
@@ -71,7 +69,7 @@ def stabilizeCameraGain(camera):
 
 # Switch between auto exposure and manual exposure based on brightness
 # Adjust shutter speed in manual mode with a smooth transition.
-def adjustCameraExposureMode(camera, bright):
+def adjustCameraExposureMode(camera, bright, nightSleepTimer):
     global manualExpoMode
     global twilightStart
     global decreaseSS
@@ -148,15 +146,12 @@ def main():
 
                 # Read all other configuration
                 qual = config.getint('jpg', 'Quality', fallback=90)
-                brTsh = config.getint('upload', 'BrightnessTreshold', fallback=10)
+                #FIXME brTsh = config.getint('upload', 'BrightnessTreshold', fallback=10)
                 server = config.get('upload', 'FtpAddress', fallback='')
-                user = config.get('upload', 'User', fallback='')
-                pwd = config.get('upload', 'Pwd', fallback='')
                 sleepTimer = config.getint('camera', 'SecondsBetweenShots', fallback=60)
                 nightSleepTimer = config.getint('camera', 'SecondsBetweenShotsAtNight', fallback=120)
                 previewTimer = config.getint('camera', 'ShowPreviewBeforeCapture', fallback=3)
                 imgPath = config.get('app', 'ImageStorePath', fallback='/tmp/')
-                darkCounter = 0
                 manualExpoMode = False
                 twilightStart = todayAt(0)
 
@@ -203,7 +198,7 @@ def main():
                     # get brightness info of cropped img
                     bright = int(brightness(img))
 
-                    skipThisLoop = adjustCameraExposureMode(camera, bright)
+                    skipThisLoop = adjustCameraExposureMode(camera, bright, nightSleepTimer)
                     if skipThisLoop:
                         continue
 
