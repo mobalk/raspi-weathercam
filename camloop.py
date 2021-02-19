@@ -47,6 +47,7 @@ def ftp_upload(config, img):
             logging.exception("%s | ftp_upload caught an error", time.strftime("%Y.%m.%d %H:%M"))
 
 def log_camera_settings(camera, bright=None):
+    logging.debug("") # separate frames with line break
     logging.info('CSV, CAM, '
                  + time.strftime("%Y.%m.%d %H:%M")
                  + ', exp_mode= ' + camera.exposure_mode
@@ -117,17 +118,27 @@ def adjust_camera_exp_mode(camera, bright, expo_state, config):
         cam_ss_now = camera.shutter_speed
         camera.shutter_speed -= expo_state["decrease_ss"]
         if camera.shutter_speed > cam_ss_now:
-            logging.warning("FURA fura dolog. Elotte %d utana %d", cam_ss_now, camera.shutter_speed) #FIXME
-            camera.shutter_speed = camera.exposure_speed - expo_state["decrease_ss"]
-
+            logging.warning("VERY strange. Shutter before %d, after %d",
+                            cam_ss_now, camera.shutter_speed)
+            sleep(3) # stop a bit and think hard
+            # try to reduce it with double
+            camera.shutter_speed = cam_ss_now - (2 * expo_state["decrease_ss"])
+            if camera.shutter_speed > cam_ss_now:
+                logging.warning("VERY VERY strange. Shutter before %d, after %d",
+                                cam_ss_now, camera.shutter_speed)
+                # fake a morning to switch back to auto exposure
+                bright = 101
 
         if bright > 100 or camera.shutter_speed < 500 * 1000:
             camera.shutter_speed = 0
             camera.exposure_mode = 'night'
             expo_state["expo_mode"] = "auto"
+        elif bright > 60:
+            # reduce more, before it gets too bright
+            camera.shutter_speed -= expo_state["decrease_ss"]
 
         logging.debug("reduced shutterspeed=%d (by %d)",
-                      camera.shutter_speed, expo_state["decrease_ss"])
+                      camera.shutter_speed, (cam_ss_now - camera.shutter_speed))
     return skip_current_loop
 
 def setResolution(camera, config):
