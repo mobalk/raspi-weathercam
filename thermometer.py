@@ -28,7 +28,7 @@ def power_switch(pin, state):
 
 #  hello, IT
 def have_you_tried_turning_it_off_and_on_again(pin):
-    logging.warning("Turn OFF then turn ON the DHT sensor")
+    logging.error("%s Sensor malfunction. Turn it OFF and ON again.", time.strftime("%Y-%m-%d %H:%M:%S,"))
     power_switch(pin, 0)
     time.sleep(3)
     power_switch(pin, 1)
@@ -73,7 +73,7 @@ with conn:
             sleepException *= 2
             if "DHT sensor not found" in error.args[0]:
                 sensor_not_found += 1
-                if sensor_not_found == 3:
+                if sensor_not_found == 5:
                     have_you_tried_turning_it_off_and_on_again(powerPin)
             else:
                 sensor_not_found = 0
