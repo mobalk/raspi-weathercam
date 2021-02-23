@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+""" Take a photo periodically and upload to idokep.hu weather service """
 from time import sleep
 import time
 import datetime
@@ -17,10 +17,13 @@ import config as conf
 
 SEC_PER_MIN = 60
 
-# full black: return 0
-# full white: return 255
-# https://stackoverflow.com/questions/3490727/what-are-some-methods-to-analyze-image-brightness-using-python
 def brightness(img_obj):
+    """ Return image brightness level.
+
+    Algorithm based on
+    https://stackoverflow.com/questions/3490727/what-are-some-methods-to-analyze-image-brightness-using-python
+    Full black returns 0, full white returns 255
+    """
     if isinstance(img_obj, str):
         img = Image.open(img_obj).convert('L')
     else:
@@ -29,10 +32,20 @@ def brightness(img_obj):
     return stat.rms[0]
 
 def today_at(h_in, m_in=0, sec=0, micros=0):
+    """ Return datetime where date part is today and time part comes from input. """
     now = datetime.datetime.now()
     return now.replace(hour=h_in, minute=m_in, second=sec, microsecond=micros)
 
-def ftp_upload(config, img):
+def get_extra_line_wrap():
+    """ Return a line break if in debugging mode, empty string otherwise. """
+    lwrap = ""
+    if logging.getLogger().getEffectiveLevel() == logging.DEBUG:
+        lwrap = "\n"
+    return lwrap
+
+def ftp_upload(img):
+    """ Upload the image to the configured ftp address. """
+    global config
     server = config.get('upload', 'FtpAddress', fallback='')
     if server:
         user = config.get('upload', 'User')
@@ -42,12 +55,12 @@ def ftp_upload(config, img):
                 file_obj = open(img, 'rb')
                 ftp.storbinary('STOR %s' % os.path.basename(img), file_obj, 1024)
                 file_obj.close()
-                logging.info("... %s uploaded", img)
+                logging.info("... %s uploaded %s", img, get_extra_line_wrap())
         except OSError:
             logging.exception("%s | ftp_upload caught an error", time.strftime("%Y.%m.%d %H:%M"))
 
 def log_camera_settings(camera, bright=None):
-    logging.debug("") # separate frames with line break
+    """ Log camera settings in a comma separated style. """
     logging.info('CSV, CAM, '
                  + time.strftime("%Y.%m.%d %H:%M")
                  + ', exp_mode= ' + camera.exposure_mode
@@ -59,23 +72,33 @@ def log_camera_settings(camera, bright=None):
                  + ', exposure_speed= ' + str(camera.exposure_speed)
                  + ', brightness= ' + str(bright))
 
-# Wait until analog gain and digital gain stabilizes around some values
+def x_within_y_percent_of_z(x_to_compare, y_percent, z_base):
+    """ Return true if the input values are within a given y percent range. """
+    z_lower = (100 - y_percent) * z_base / 100.0
+    z_upper = (100 + y_percent) * z_base / 100.0
+    return bool(z_lower <= x_to_compare <= z_upper)
+
 def stabilize_camera_gain(camera):
+    """ Wait until analog gain and digital gain stabilizes around some values. """
     prev_an_gain = camera.analog_gain
     prev_dig_gain = camera.digital_gain
     sleep(3)
-    while camera.analog_gain != prev_an_gain or camera.digital_gain != prev_dig_gain:
+    while not (x_within_y_percent_of_z(camera.analog_gain, 3, prev_an_gain)
+               and x_within_y_percent_of_z(camera.digital_gain, 3, prev_dig_gain)):
         prev_an_gain = camera.analog_gain
         prev_dig_gain = camera.digital_gain
         print(float(prev_an_gain), float(prev_dig_gain), camera.exposure_speed)
         sleep(3)
 
 def manual_expo_mode(state):
+    """ Bool to express if mode is manual. """
     return state["expo_mode"] == "manual"
 
-# Switch between auto exposure and manual exposure based on brightness
-# Adjust shutter speed in manual mode with a smooth transition.
-def adjust_camera_exp_mode(camera, bright, expo_state, config):
+def adjust_camera_exp_mode(camera, bright, expo_state):
+    """ Switch between auto exposure and manual exposure based on brightness.
+    Try to adjust shutter speed in manual mode with a smooth transition.
+    """
+    global config
     MAX_SS = 6 # longest shutter speed in sec
     increase_ss = 300 * 1000 # increase shutter speed in manual mode (uSec)
 
@@ -126,8 +149,24 @@ def adjust_camera_exp_mode(camera, bright, expo_state, config):
             if camera.shutter_speed > cam_ss_now:
                 logging.warning("VERY VERY strange. Shutter before %d, after %d",
                                 cam_ss_now, camera.shutter_speed)
-                # fake a morning to switch back to auto exposure
-                bright = 101
+                sleep(3) # stop a bit and think hard
+
+                target_ss = cam_ss_now - expo_state["decrease_ss"]
+                # first reset then assign slowly increase until needed
+                needtobe = 0
+                delta = 100000
+                camera.shutter_speed = needtobe
+                while camera.shutter_speed < target_ss:
+                    needtobe += delta
+                    camera.shutter_speed = needtobe
+                    logging.debug("needtobe: %d, ss: %d", needtobe, camera.shutter_speed)
+
+                camera.shutter_speed = needtobe - delta
+                if camera.shutter_speed > cam_ss_now:
+                    logging.warning("VERY VERY VERY strange. Shutter before %d, after %d",
+                                    cam_ss_now, camera.shutter_speed)
+                    # fake a morning to switch back to auto exposure
+                    bright = 101
 
         if bright > 100 or camera.shutter_speed < 500 * 1000:
             camera.shutter_speed = 0
@@ -141,7 +180,9 @@ def adjust_camera_exp_mode(camera, bright, expo_state, config):
                       camera.shutter_speed, (cam_ss_now - camera.shutter_speed))
     return skip_current_loop
 
-def setResolution(camera, config):
+def set_resolution(camera):
+    """ Set camera resolution according configured values. """
+    global config
     if config.getboolean('camera', 'CropImage'):
         res = config.get('camera', 'FullResolution', fallback='')
     else:
@@ -150,7 +191,9 @@ def setResolution(camera, config):
     if res:
         camera.resolution = res
 
-def cropImage(img, config):
+def crop_image(img):
+    """ Crop image as configured. """
+    global config
     left = config.getint('camera', 'BoxPositionX')
     top = config.getint('camera', 'BoxPositionY')
     right = left + config.getint('camera', 'BoxSizeX')
@@ -167,24 +210,28 @@ def cropImage(img, config):
     im1 = im1.resize((int(resize_x), int(resize_y)), resample=Image.LANCZOS)
     return im1
 
-def sleep_a_bit(expo_state, config):
+def sleep_a_bit(expo_state):
+    """ Sleep after each cycle."""
+    global config
     if manual_expo_mode(expo_state):
         sleep(config.getint('camera', 'SecondsBetweenShotsAtNight', fallback=120))
     else:
         sleep(config.getint('camera', 'SecondsBetweenShots', fallback=60))
 
 def main():
+    """ Start PiCamera and take pictures until program is terminated. """
+    global config
+
     expo_state = {
         "expo_mode": "auto", # "manual"
         "twilight_start": today_at(0),
         "decrease_ss": 300 * 1000 # decrease shutter speed in manual mode (uSec)
     }
+
     LOGFILE = "weathercam.log"
     logging.basicConfig(filename=LOGFILE, level=logging.DEBUG)
     print("Logging to " + LOGFILE)
     logging.debug("Python version: \n%s", sys.version)
-
-    config = conf.init()
 
     with picamera.PiCamera() as camera:
         while True: # extern loop that allows reconfiguring camera setup
@@ -193,7 +240,7 @@ def main():
                 logging.info("Re-read config")
                 conf.read(config)
 
-                setResolution(camera, config)
+                set_resolution(camera)
                 # Read all other configuration
                 qual = config.getint('jpg', 'Quality', fallback=90)
                 preview_timer = config.getint('camera', 'ShowPreviewBeforeCapture',
@@ -221,7 +268,7 @@ def main():
 
                     # crop - if configured
                     if config.getboolean('camera', 'CropImage'):
-                        img = cropImage(img, config)
+                        img = crop_image(img)
 
                     # save
                     img.save(filename, quality=qual, optimize=True)
@@ -229,16 +276,16 @@ def main():
                     # get brightness info of cropped img
                     bright = int(brightness(img))
 
-                    skip_this_loop = adjust_camera_exp_mode(camera, bright, expo_state, config)
+                    skip_this_loop = adjust_camera_exp_mode(camera, bright, expo_state)
                     if skip_this_loop:
                         continue
 
                     filesize = round(os.stat(filename).st_size / 1024 * 10) / 10
                     logging.info("%s, size=%d, brightness=%d", filename, filesize, bright)
 
-                    ftp_upload(config, filename)
+                    ftp_upload(filename)
 
-                    sleep_a_bit(expo_state, config)
+                    sleep_a_bit(expo_state)
             except KeyboardInterrupt:
                 print("\n\nEnter 'c' for [c]ontinue ar anything else to exit.")
                 userinput = input("Whats next?\n")
@@ -249,6 +296,8 @@ def main():
 
             finally:
                 logging.warning("Finally block", exc_info=True)
+
+config = conf.init()
 
 if __name__ == "__main__":
     main()
