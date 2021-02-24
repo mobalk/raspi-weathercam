@@ -61,16 +61,12 @@ def ftp_upload(img):
 
 def log_camera_settings(camera, bright=None):
     """ Log camera settings in a comma separated style. """
-    logging.info('CSV, CAM, '
-                 + time.strftime("%Y.%m.%d %H:%M")
-                 + ', exp_mode= ' + camera.exposure_mode
-                 + ', framerate= ' + str(camera.framerate)
-                 + ', iso= ' + str(camera.iso)
-                 + ', shutter_speed= ' + str(camera.shutter_speed)
-                 + ', digital_gain= ' + str(float(camera.digital_gain))
-                 + ', analog_gain= ' + str(float(camera.analog_gain))
-                 + ', exposure_speed= ' + str(camera.exposure_speed)
-                 + ', brightness= ' + str(bright))
+    # pylint: disable=logging-not-lazy
+    logging.info('CSV, CAM, %s, exp_mode= %s, framerate= %d, iso= %d, shutter_speed= %d,'
+                 + 'digital_gain= %0.4f, analog_gain= %0.4f, exposure_speed= %d, brightness= %d',
+                 time.strftime("%Y.%m.%d %H:%M"), camera.exposure_mode, camera.framerate,
+                 camera.iso, camera.shutter_speed, float(camera.digital_gain),
+                 float(camera.analog_gain), camera.exposure_speed, bright)
 
 def x_within_y_percent_of_z(x_to_compare, y_percent, z_base):
     """ Return true if the input values are within a given y percent range. """
@@ -99,7 +95,7 @@ def adjust_camera_exp_mode(camera, bright, expo_state):
     Try to adjust shutter speed in manual mode with a smooth transition.
     """
     global config
-    MAX_SS = 6 # longest shutter speed in sec
+    max_ss = 6 # longest shutter speed in sec
     increase_ss = 300 * 1000 # increase shutter speed in manual mode (uSec)
 
     skip_current_loop = False
@@ -112,11 +108,11 @@ def adjust_camera_exp_mode(camera, bright, expo_state):
             expo_state["expo_mode"] = "manual"
             stabilize_camera_gain(camera)
             camera.exposure_mode = 'off'
-            camera.framerate = Fraction(1, MAX_SS)
+            camera.framerate = Fraction(1, max_ss)
             camera.shutter_speed = camera.exposure_speed
             logging.debug("set manual_expo_mode, shutterspeed=%d", camera.shutter_speed)
             skip_current_loop = True
-        elif camera.shutter_speed < int((MAX_SS) * 1000 * 1000):
+        elif camera.shutter_speed < int((max_ss) * 1000 * 1000):
             camera.shutter_speed += increase_ss
             logging.debug("increased shutterspeed=%d", camera.shutter_speed)
             sleep(6) # give some time for adaptation
@@ -187,7 +183,7 @@ def set_resolution(camera):
         res = config.get('camera', 'FullResolution', fallback='')
     else:
         res = config.get('camera', 'Resolution', fallback='')
-    logging.info("resolution: " + res)
+    logging.info("resolution: %s", res)
     if res:
         camera.resolution = res
 
@@ -228,9 +224,9 @@ def main():
         "decrease_ss": 300 * 1000 # decrease shutter speed in manual mode (uSec)
     }
 
-    LOGFILE = "weathercam.log"
-    logging.basicConfig(filename=LOGFILE, level=logging.DEBUG)
-    print("Logging to " + LOGFILE)
+    logfile = "weathercam.log"
+    logging.basicConfig(filename=logfile, level=logging.DEBUG)
+    print("Logging to " + logfile)
     logging.debug("Python version: \n%s", sys.version)
 
     with picamera.PiCamera() as camera:
@@ -291,8 +287,8 @@ def main():
                 userinput = input("Whats next?\n")
                 if userinput == 'c':
                     continue
-                else:
-                    break
+                #else:
+                break
 
             finally:
                 logging.warning("Finally block", exc_info=True)
