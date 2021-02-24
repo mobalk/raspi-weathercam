@@ -140,29 +140,23 @@ def adjust_camera_exp_mode(camera, bright, expo_state):
             logging.warning("VERY strange. Shutter before %d, after %d",
                             cam_ss_now, camera.shutter_speed)
             sleep(3) # stop a bit and think hard
-            # try to reduce it with double
-            camera.shutter_speed = cam_ss_now - (2 * expo_state["decrease_ss"])
-            if camera.shutter_speed > cam_ss_now:
-                logging.warning("VERY VERY strange. Shutter before %d, after %d",
-                                cam_ss_now, camera.shutter_speed)
-                sleep(3) # stop a bit and think hard
 
-                target_ss = cam_ss_now - expo_state["decrease_ss"]
-                # first reset then assign slowly increase until needed
-                needtobe = 0
-                delta = 100000
+            target_ss = cam_ss_now - expo_state["decrease_ss"]
+            # first reset then assign slowly increase until needed
+            needtobe = 0
+            delta = 100000
+            camera.shutter_speed = needtobe
+            while camera.shutter_speed < target_ss:
+                needtobe += delta
                 camera.shutter_speed = needtobe
-                while camera.shutter_speed < target_ss:
-                    needtobe += delta
-                    camera.shutter_speed = needtobe
-                    logging.debug("needtobe: %d, ss: %d", needtobe, camera.shutter_speed)
+                logging.debug("needtobe: %d, ss: %d", needtobe, camera.shutter_speed)
 
-                camera.shutter_speed = needtobe - delta
-                if camera.shutter_speed > cam_ss_now:
-                    logging.warning("VERY VERY VERY strange. Shutter before %d, after %d",
-                                    cam_ss_now, camera.shutter_speed)
-                    # fake a morning to switch back to auto exposure
-                    bright = 101
+            camera.shutter_speed = needtobe - delta
+            if camera.shutter_speed > cam_ss_now:
+                logging.warning("VERY VERY VERY strange. Shutter before %d, after %d",
+                                cam_ss_now, camera.shutter_speed)
+                # fake a morning to switch back to auto exposure
+                bright = 101
 
         if bright > 100 or camera.shutter_speed < 500 * 1000:
             camera.shutter_speed = 0
