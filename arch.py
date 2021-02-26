@@ -1,16 +1,14 @@
-import configparser
 import os
-from PIL import Image, ImageChops, ImageEnhance
+from PIL import Image
 import logging
 import time
+
+import config
 
 SEC_PER_DAY = 60 * 60 * 24
 
 logging.basicConfig(level=logging.DEBUG)
 dryRun = False
-
-config = configparser.ConfigParser()
-config.read('config.ini')
 
 factor = 0.4
 
@@ -50,7 +48,7 @@ for filename in sorted(os.listdir(directory)):
             while True:
                 ans = input()
                 if ans in ('o', 'O', 's', 'S', 'x'): break
-                if ins == "s": continue
+                if ans == "s": continue
                 if ans == "x": break
 
         if dryRun:

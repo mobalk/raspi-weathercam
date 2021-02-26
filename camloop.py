@@ -13,7 +13,7 @@ from fractions import Fraction
 from PIL import Image, ImageStat
 import picamera
 
-import config as conf
+import config
 
 SEC_PER_MIN = 60
 
@@ -45,7 +45,6 @@ def get_extra_line_wrap():
 
 def ftp_upload(img):
     """ Upload the image to the configured ftp address. """
-    global config
     server = config.get('upload', 'FtpAddress', fallback='')
     if server:
         user = config.get('upload', 'User')
@@ -94,7 +93,6 @@ def adjust_camera_exp_mode(camera, bright, expo_state):
     """ Switch between auto exposure and manual exposure based on brightness.
     Try to adjust shutter speed in manual mode with a smooth transition.
     """
-    global config
     max_ss = 6 # longest shutter speed in sec
     increase_ss = 300 * 1000 # increase shutter speed in manual mode (uSec)
 
@@ -122,7 +120,7 @@ def adjust_camera_exp_mode(camera, bright, expo_state):
             sleep(5 * SEC_PER_MIN)
 
     # Handle bright scene in manual mode
-    if manual_expo_mode(expo_state) and bright > 30:
+    if manual_expo_mode(expo_state) and bright > 35:
         if expo_state["twilight_start"] <= today_at(0):
             expo_state["twilight_start"] = datetime.datetime.now()
             # try to reach 0.45 sec shutter speed in 15 minutes
@@ -172,7 +170,6 @@ def adjust_camera_exp_mode(camera, bright, expo_state):
 
 def set_resolution(camera):
     """ Set camera resolution according configured values. """
-    global config
     if config.getboolean('camera', 'CropImage'):
         res = config.get('camera', 'FullResolution', fallback='')
     else:
@@ -183,7 +180,6 @@ def set_resolution(camera):
 
 def crop_image(img):
     """ Crop image as configured. """
-    global config
     left = config.getint('camera', 'BoxPositionX')
     top = config.getint('camera', 'BoxPositionY')
     right = left + config.getint('camera', 'BoxSizeX')
@@ -202,7 +198,6 @@ def crop_image(img):
 
 def sleep_a_bit(expo_state):
     """ Sleep after each cycle."""
-    global config
     if manual_expo_mode(expo_state):
         sleep(config.getint('camera', 'SecondsBetweenShotsAtNight', fallback=120))
     else:
@@ -210,7 +205,6 @@ def sleep_a_bit(expo_state):
 
 def main():
     """ Start PiCamera and take pictures until program is terminated. """
-    global config
 
     expo_state = {
         "expo_mode": "auto", # "manual"
@@ -228,7 +222,7 @@ def main():
             try:
                 # Configure camera
                 logging.info("Re-read config")
-                conf.read(config)
+                config.reread()
 
                 set_resolution(camera)
                 # Read all other configuration
@@ -286,8 +280,6 @@ def main():
 
             finally:
                 logging.warning("Finally block", exc_info=True)
-
-config = conf.init()
 
 if __name__ == "__main__":
     main()

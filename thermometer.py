@@ -36,16 +36,15 @@ def have_you_tried_turning_it_off_and_on_again(pin):
     power_switch(pin, 0)
     time.sleep(3)
     power_switch(pin, 1)
+    time.sleep(3)
 
-conf = config.init()
-
-powerPin = get_power_pin(conf)
+powerPin = get_power_pin()
 power_switch(powerPin, 1)
 
 # Initiate the dht device, with data pin connected to:
 dhtDevice = adafruit_dht.DHT22(board.D4, use_pulseio=False)
 
-dbPath = conf.get('app', 'PathToDatabase')
+dbPath = config.get('app', 'PathToDatabase')
 
 conn = sqlite3.connect(dbPath)
 with conn:

@@ -27,28 +27,39 @@ from os import path
 import logging
 
 logger = logging.getLogger(__name__)
-configPath = 'config.ini'
+CONFIG_PATH = 'config.ini'
 
 def init(*args):
     config = configparser.ConfigParser()
     if len(args) > 0:
-        global configPath
-        configPath = args[0]
-    read(config)
+        global CONFIG_PATH
+        CONFIG_PATH = args[0]
     return config
 
-def read(config):
-    global configPath
-    config.read(configPath)
-    userauthconfig = config.get('app', 'PathToUserAuthConfig', fallback='')
-    logger.debug("PathToUserAuthConfig: " + userauthconfig)
+def read(config_parser):
+    global CONFIG_PATH
+    config_parser.read(CONFIG_PATH)
+    userauthconfig = config_parser.get('app', 'PathToUserAuthConfig', fallback='')
+    logger.debug("PathToUserAuthConfig: %s", userauthconfig)
     if userauthconfig and path.exists(userauthconfig):
-        config.read(userauthconfig)
-        logger.debug(userauthconfig + " read successfully")
+        config_parser.read(userauthconfig)
+        logger.debug("%s read successfully", userauthconfig )
+
+__CONF = init()
+read(__CONF)
+
+def reread():
+    read(__CONF)
+
+def get(*args, **kwargs):
+    return __CONF.get(*args, **kwargs)
+
+def getint(*args, **kwargs):
+    return __CONF.getint(*args, **kwargs)
+
+def getboolean(*args, **kwargs):
+    return __CONF.getboolean(*args, **kwargs)
 
 if __name__ == '__main__':
-    conf = init()
     if len(sys.argv) == 3:
-        print(conf.get(sys.argv[1], sys.argv[2]))
-
-
+        print(__CONF.get(sys.argv[1], sys.argv[2]))

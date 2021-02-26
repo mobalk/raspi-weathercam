@@ -9,6 +9,7 @@ from os import path
 
 # Lookup config.ini, in same directory with this script.
 conf = config.init(path.join(path.split(path.realpath(__file__))[0], 'config.ini'))
+config.read(conf)
 
 LOGFILE = path.join(conf.get('app', 'PrivateDir'), 'sendTemp.log')
 logging.basicConfig(filename=LOGFILE, level=logging.INFO)
