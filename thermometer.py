@@ -55,16 +55,25 @@ with conn:
     # Default sleep before retry in case of exception. After continous errors we'll increase that.
     sleep_exception = 3.0
     sensor_not_found = 0
+    last_temp = None
     while True:
         try:
             # Print the values to the serial port
             temperature_c = dhtDevice.temperature
             humidity = dhtDevice.humidity
             logging.info("{} Temp: {:.1f} C,    Humidity: {}% ".format(
-                time.strftime("%Y-%m-%d %H:%M:%S,"),temperature_c, humidity))
-            cur.execute("INSERT INTO DHT_data values(datetime('now'), (?), (?))",
-                        (temperature_c, humidity))
-            conn.commit()
+                time.strftime("%Y-%m-%d %H:%M:%S,"), temperature_c, humidity))
+            if not last_temp:
+                last_temp = temperature_c
+            else:
+                if abs(temperature_c - last_temp) < 2.0:
+                    cur.execute("INSERT INTO DHT_data values(datetime('now'), (?), (?))",
+                                (temperature_c, humidity))
+                    conn.commit()
+                else:
+                    logging.warning("%s delta Temp > 2.0C. Last: %.1f, Current: %.1f. Skip it.",
+                                    time.strftime("%Y-%m-%d %H:%M:%S,"), last_temp, temperature_c)
+                last_temp = temperature_c
 
         except RuntimeError as error:
             # Errors happen fairly often, DHT's are hard to read, just keep going
