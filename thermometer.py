@@ -38,6 +38,25 @@ def have_you_tried_turning_it_off_and_on_again(pin):
     power_switch(pin, 1)
     time.sleep(3)
 
+def check_for_validity(temp, last_temp):
+    """ Compare temperature to an absolute range but also to the last measured value. """
+    if temp < -40 or temp > 50:
+        logging.warning("%s Temp out of range: %.1f. Skip it.",
+                        time.strftime("%Y-%m-%d %H:%M:%S,"), temperature_c)
+        return (False, last_temp)
+
+    valid = False
+    if not last_temp:
+        last_temp = temp
+    else:
+        if abs(temp - last_temp) < 2.0:
+            valid = True
+        else:
+            logging.warning("%s delta Temp > 2.0C. Last: %.1f, Current: %.1f. Skip it.",
+                            time.strftime("%Y-%m-%d %H:%M:%S,"), last_temp, temperature_c)
+        last_temp = temp
+    return (valid, last_temp)
+
 powerPin = get_power_pin()
 power_switch(powerPin, 1)
 
@@ -63,17 +82,11 @@ with conn:
             humidity = dhtDevice.humidity
             logging.info("{} Temp: {:.1f} C,    Humidity: {}% ".format(
                 time.strftime("%Y-%m-%d %H:%M:%S,"), temperature_c, humidity))
-            if not last_temp:
-                last_temp = temperature_c
-            else:
-                if abs(temperature_c - last_temp) < 2.0:
-                    cur.execute("INSERT INTO DHT_data values(datetime('now'), (?), (?))",
-                                (temperature_c, humidity))
-                    conn.commit()
-                else:
-                    logging.warning("%s delta Temp > 2.0C. Last: %.1f, Current: %.1f. Skip it.",
-                                    time.strftime("%Y-%m-%d %H:%M:%S,"), last_temp, temperature_c)
-                last_temp = temperature_c
+            (valid, last_temp) = check_for_validity(temperature_c, last_temp)
+            if valid:
+                cur.execute("INSERT INTO DHT_data values(datetime('now'), (?), (?))",
+                            (temperature_c, humidity))
+                conn.commit()
 
         except RuntimeError as error:
             # Errors happen fairly often, DHT's are hard to read, just keep going
