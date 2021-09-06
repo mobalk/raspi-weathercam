@@ -6,7 +6,7 @@ import datetime
 import sys
 import io
 import os
-from ftplib import FTP
+from ftplib import FTP, error_temp
 import logging
 from fractions import Fraction
 
@@ -50,13 +50,17 @@ def ftp_upload(img):
         user = config.get('upload', 'User')
         logging.debug("upload to " + server + " as " + user)
         try:
-            with FTP(host=server, user=user, passwd=config.get('upload', 'Pwd')) as ftp:
+            max_timeout = config.getint('camera', 'SecondsBetweenShots', fallback=60)
+            with FTP(host=server, user=user, passwd=config.get('upload', 'Pwd'),
+                    timeout=max_timeout) as ftp:
                 file_obj = open(img, 'rb')
                 ftp.storbinary('STOR %s' % os.path.basename(img), file_obj, 1024)
                 file_obj.close()
                 logging.info("... %s uploaded %s", img, get_extra_line_wrap())
-        except OSError:
+        except (OSError, error_temp):
             logging.exception("%s | ftp_upload caught an error", time.strftime("%Y.%m.%d %H:%M"))
+        except:
+            logging.exception("%s | unexpected error", time.strftime("%Y.%m.%d %H:%M"))
 
 def log_camera_settings(camera, bright=None):
     """ Log camera settings in a comma separated style. """

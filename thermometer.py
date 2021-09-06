@@ -58,6 +58,9 @@ def check_for_validity(temp, last_temp):
     return (valid, last_temp)
 
 powerPin = get_power_pin()
+# turn off the sensor then on again
+power_switch(powerPin, 0)
+time.sleep(3)
 power_switch(powerPin, 1)
 
 # Initiate the dht device, with data pin connected to:
@@ -95,7 +98,7 @@ with conn:
             sleep_exception *= 2
             if "DHT sensor not found" in error.args[0]:
                 sensor_not_found += 1
-                if sensor_not_found == 5:
+                if sensor_not_found % 5 == 0:
                     have_you_tried_turning_it_off_and_on_again(powerPin)
             else:
                 sensor_not_found = 0
