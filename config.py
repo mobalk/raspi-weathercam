@@ -23,11 +23,13 @@ The script returns the configured value of the section / option.
 
 import configparser
 import sys
-from os import path
+from os import path, strerror
 import logging
+import errno
 
 logger = logging.getLogger(__name__)
 CONFIG_PATH = 'config.ini'
+read_once = False
 
 def init(*args):
     config = configparser.ConfigParser()
@@ -38,6 +40,8 @@ def init(*args):
 
 def read(config_parser):
     global CONFIG_PATH
+    if not path.exists(CONFIG_PATH):
+        raise FileNotFoundError(errno.ENOENT, strerror(errno.ENOENT), CONFIG_PATH)
     config_parser.read(CONFIG_PATH)
     userauthconfig = config_parser.get('app', 'PathToUserAuthConfig', fallback='')
     logger.debug("PathToUserAuthConfig: %s", userauthconfig)
@@ -46,20 +50,31 @@ def read(config_parser):
         logger.debug("%s read successfully", userauthconfig )
 
 __CONF = init()
-read(__CONF)
+
+def first_read():
+    global read_once
+    if not read_once:
+        read(__CONF)
+        read_once = True
 
 def reread():
+    global read_once
     read(__CONF)
+    read_once = True
 
 def get(*args, **kwargs):
+    first_read()
     return __CONF.get(*args, **kwargs)
 
 def getint(*args, **kwargs):
+    first_read()
     return __CONF.getint(*args, **kwargs)
 
 def getboolean(*args, **kwargs):
+    first_read()
     return __CONF.getboolean(*args, **kwargs)
 
 if __name__ == '__main__':
+    first_read()
     if len(sys.argv) == 3:
         print(__CONF.get(sys.argv[1], sys.argv[2]))
