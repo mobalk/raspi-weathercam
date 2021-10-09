@@ -5,7 +5,7 @@ This is a Raspberry-Pi 3 project to upload meteorological data to [idokep.hu](ht
 
 After you connect a *Camera* and a *DHT22* sensor to the Pi, you can regulary upload the actual **sky picture** and **temperature** data to [idokep.hu](https://www.idokep.hu)
 
-If you are interested in setting up a similar project, please check the [Install Guide](INSTALL_GUIDE.md)
+If you are interested in setting up a similar project, please check the [Install Guide](INSTALL.md)
 
 ***
 
