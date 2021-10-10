@@ -21,7 +21,7 @@ def get_power_pin():
     """ Return BCM number of the power pin - if configured so """
     configured_pin = config.getint('thermo', 'PowerPin', fallback=-1)
     if configured_pin != -1:
-        return RPiGPIOPin(RPiGPIOFactory(),22)
+        return RPiGPIOPin(RPiGPIOFactory(), configured_pin)
     return None
 
 def power_switch(pin, state):

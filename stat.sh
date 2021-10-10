@@ -21,7 +21,7 @@ fi
 
 echo "date, count, total size (M), average size (K)"
 
-for ff in `ls ${Dir}IMG*jpg | cut -d'-' -f 2| uniq`
+for ff in `find ${Dir} -name "IMG*jpg" | cut -d'-' -f 2| uniq`
 do
 	Count=$(ls ${Dir}IMG-${ff}*jpg | wc -l)
 	Size=$(du -c ${Dir}IMG-${ff}*jpg | tail -1 | cut -f 1 )

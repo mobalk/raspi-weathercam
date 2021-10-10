@@ -5,9 +5,9 @@ sudo apt full-upgrade
 
 # crontab entry for viewerstats (idokep.hu)
 crontab -e
-59 5,9,13,17,21,23 * * * /home/pi/proj/raspi-weathercam/viewerstat.sh
+59 5,9,13,17,21,23 * * * /home/pi/repos/raspi-weathercam/viewerstat.sh
 # crontab entry to upload temperature to idokep.hu
-*/3 * * * *  /home/pi/proj/raspi-weathercam/sendTemperature.py
+*/3 * * * *  /home/pi/repos/raspi-weathercam/sendTemperature.py
 
 # if you have Camera HQ you might get problems with max. resolution.
 # Increase GPU memory to 256MB
@@ -35,3 +35,7 @@ sudo apt-get install libatlas-base-dev  # a dependency needed for numpy
 
 sudo apt-get install python3-flask
 
+#----send mail from command line (viewerstat.sh)
+# program used is msmtp
+# configuration found in /etc/msmtprc --> use a user based config in ~/.msmtprc
+# chmod go-r ~/.msmtprc

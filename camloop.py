@@ -217,7 +217,7 @@ def main():
     }
 
     logfile = "weathercam.log"
-    logging.basicConfig(filename=logfile, level=logging.DEBUG)
+    logging.basicConfig(filename=logfile, level=logging.INFO)
     print("Logging to " + logfile)
     logging.debug("Python version: \n%s", sys.version)
 
