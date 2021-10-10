@@ -55,7 +55,12 @@ for filename in sorted(os.listdir(directory)):
         n_skipped += 1
         continue
 
-    newPath = os.path.join(directory, 'arch', filename)
+    filedate = filename.split("-")[1]
+    yyyy = filedate[0:4]
+    mm = filedate[4:6]
+    newPathParent = os.path.join(directory, 'arch', yyyy, mm)
+    os.makedirs(newPathParent, exist_ok=True)
+    newPath = os.path.join(newPathParent, filename)
     if delete:
         logging.debug("Delete file=" + fPath
                       + " new=" + newPath)
