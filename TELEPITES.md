@@ -122,6 +122,16 @@ Ha egy perc nem volt elég, elindíthatjuk az élőképet időkorlát nélkül i
 
 Ha azt tapasztaljuk, hogy a lencsétől csak néhány mm-re rajzol éles képet az objektív, akkor felmerül, hogy bennmaradt a "C/CS-mount" közgyűrű. Vegyük ki.
 
+## Idokep.hu regisztráció
+Ha fel szeretnénk tölteni a kamera képét az idokep.hu-ra, regisztrálnunk kell egy felhasználót:
+https://www.idokep.hu/regisztracio
+
+Ha csak kamera-képet szeretnénk feltölteni, választhatjuk a "Kezdő szintű" regisztrációt. 
+
+Ha a hőmérsékletet is meg szeretnénk osztani, ahhoz "Haladó szintű" regisztrációra van szükség. Ezt megelőzően érdemes átfutni a (Meterológiai alapismereteket)[https://www.idokep.hu/alapismeretek], mert a regisztráció mellett egy rövid teszten kell jó eredmélnyt elérni.
+
+A közvetítéshez érdemes még az (Időkép GY.I.K)[https://wiki.idokep.hu/]-et is átolvasni.
+
 ## Időjárás figyelő telepítése
 Kezdjük a RPi frissítésével a szokásos módon.
 
@@ -140,7 +150,7 @@ Ha minden jól ment, az eszközön rajta vannak a szükséges file-ok.
 A DHT22 hőmérséklet szenzor használatához a következő Python könyvtárakra lesz szükség.
 
     pip3 install adafruit-circuitpython-dht
-    sudo apt-get install libgpiod2
+    sudo apt install libgpiod2
 
 A `viewerstat.sh` parancsfile automatikus E-Mail küldésre az `msmtp` programot használja. Beállítását lásd később.
 
@@ -157,7 +167,9 @@ A log file-ok egyidejű vizsgálatához ajánlott:
     
 Egy példa *alias* a használatára, amit a `~/.bash_aliases` file-ba másolhatunk:
 
-    alias log='multitail -s 2 -sn 1,3 ~/raspi-weathercam/weathercam.log ~/raspi-weathercam/temperature.log ~/.raspi-weathercam/sendTemp.log ~/.raspi-weathercam/viewerstat.csv'
+```shell
+echo "alias log='multitail -s 2 -sn 1,3 ~/raspi-weathercam/weathercam.log ~/raspi-weathercam/temperature.log ~/.raspi-weathercam/sendTemp.log ~/.raspi-weathercam/viewerstat.csv'" >> ~/.bash_aliases
+```
 
 ### Beállítások
 A program-beállításokat két file tartalmazza:
@@ -181,6 +193,8 @@ Másoljuk át a személyes beállításokat tartalmazó TEMPLATE file-t a kívá
     cp userauth.ini-TEMPLATE ~/.raspi-weathercam/userauth.ini
     nano ~/.raspi-weathercam/userauth.ini
 
+Írjuk be az idokep.hu regisztrációs adatainkat és hogy milyen e-mail címre jöjjön a levél leállás esetén.
+
 ### Időzített futtatások
 Néhány parancsfile-t időzítetten célszerű futtatni, ehhez Linux cron bejegyzéseket készítünk.
 
@@ -199,6 +213,7 @@ Másoljuk be a lenti beállításokat `cron` bejegyzések végére:
 * `sendTemperate.py` - 3 percenként elküldi az utolsó hőmérsékleti adatok átlagát
 * `arch.py` - naponta archiválja az x napnál régebbi képeket (lekicsinyíti és dátum szerint az `~/Pictures/idokep/arch` könyvtárba másolja.
    Az eredeti törlésre kerül.
+
 ### Automatikus e-mail
 A következő cikkeket javaslom a helyes konfigurációhoz: 
 
