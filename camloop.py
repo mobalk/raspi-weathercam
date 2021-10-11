@@ -234,6 +234,7 @@ def main():
                 preview_timer = config.getint('camera', 'ShowPreviewBeforeCapture',
                                               fallback=3)
                 img_path = config.get('app', 'ImageStorePath', fallback='/tmp/')
+                os.makedirs(img_path, exist_ok=True)
 
                 camera.exposure_mode = 'night'
                 sleep(6) # quickly adapt analog/digital gain, only then slow down framerate
