@@ -15,4 +15,4 @@ A `raspi-weathercam` egy hobbi-projekt eredménye.
 Az itt található programok segítségével házi égbolt-figyelő időjárás állomást barkácsolhatsz egy Raspberry-Pi mini-számítógépből.
 A programok az [idokep.hu](https://www.idokep.hu) meteorológiai oldallal kommunikálnak, az adatokat (égkép, hőmérséklet) oda töltik fel.
 
-Ha van kedved kipróbálni kattints a [Telepítési útmutatóra](TELEPITES.md)
+Ha kedved van kipróbálni, kattints a [Telepítési útmutatóra](TELEPITES.md)
