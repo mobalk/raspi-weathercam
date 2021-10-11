@@ -128,9 +128,9 @@ https://www.idokep.hu/regisztracio
 
 Ha csak kamera-képet szeretnénk feltölteni, választhatjuk a "Kezdő szintű" regisztrációt. 
 
-Ha a hőmérsékletet is meg szeretnénk osztani, ahhoz "Haladó szintű" regisztrációra van szükség. Ezt megelőzően érdemes átfutni a (Meterológiai alapismereteket)[https://www.idokep.hu/alapismeretek], mert a regisztráció mellett egy rövid teszten kell jó eredmélnyt elérni.
+Ha a hőmérsékletet is meg szeretnénk osztani, ahhoz "Haladó szintű" regisztrációra van szükség. Ezt megelőzően érdemes átfutni a [Meterológiai alapismereteket](https://www.idokep.hu/alapismeretek), mert a regisztráció mellett egy rövid teszten kell jó eredmélnyt elérni.
 
-A közvetítéshez érdemes még az (Időkép GY.I.K)[https://wiki.idokep.hu/]-et is átolvasni.
+A közvetítéshez érdemes még az [Időkép GY.I.K-et](https://wiki.idokep.hu/) is átolvasni.
 
 ## Időjárás figyelő telepítése
 Kezdjük a RPi frissítésével a szokásos módon.
@@ -195,8 +195,29 @@ Másoljuk át a személyes beállításokat tartalmazó TEMPLATE file-t a kívá
 
 Írjuk be az idokep.hu regisztrációs adatainkat és hogy milyen e-mail címre jöjjön a levél leállás esetén.
 
+### Automatikus e-mail
+A következő cikkeket javaslom a helyes konfigurációhoz: 
+
+* https://techrapiduk.blogspot.com/2017/04/send-email-on-raspberry-pi-with-msmtp.html
+* https://www.howtoraspberry.com/2021/06/how-to-send-mail-from-a-raspberry-pi/
+* A google account-ot is be kell állítani, hogy elfogadja a nem túl biztonságos csak jelszó alapú autentikációt.
+  Lehet, hogy célszerű ehhez egy csak erre használt új Gmail email cím készítése:
+  https://stackoverflow.com/questions/38391412/raspberry-pi-send-mail-from-command-line-using-gmail-smtp-server
+
+## Az időjárás-figyelő indítása
+### Égkép fotózása és feltöltése
+
+    cd ~/raspi-weathercam
+    python3 camloop.py
+    
+### Hőmérséklet mérése
+
+    cd ~/raspi-weathercam
+    ./startStop.sh
+
 ### Időzített futtatások
-Néhány parancsfile-t időzítetten célszerű futtatni, ehhez Linux cron bejegyzéseket készítünk.
+Ha a fenti programok gond nélkül üzemelnek, ismerkedjünk meg további parancsfile-okkal amelyeket időzítetten célszerű futtatni.
+Ehhez Linux cron bejegyzéseket készítünk.
 
     crontab -e
 
@@ -213,24 +234,3 @@ Másoljuk be a lenti beállításokat `cron` bejegyzések végére:
 * `sendTemperate.py` - 3 percenként elküldi az utolsó hőmérsékleti adatok átlagát
 * `arch.py` - naponta archiválja az x napnál régebbi képeket (lekicsinyíti és dátum szerint az `~/Pictures/idokep/arch` könyvtárba másolja.
    Az eredeti törlésre kerül.
-
-### Automatikus e-mail
-A következő cikkeket javaslom a helyes konfigurációhoz: 
-
-* https://techrapiduk.blogspot.com/2017/04/send-email-on-raspberry-pi-with-msmtp.html
-* https://www.howtoraspberry.com/2021/06/how-to-send-mail-from-a-raspberry-pi/
-* A google account-ot is be kell állítani, hogy elfogadja a nem túl biztonságos csak jelszó alapú autentikációt.
-  Lehet, hogy célszerű ehhez egy csak erre használt új Gmail email cím készítése:
-  https://stackoverflow.com/questions/38391412/raspberry-pi-send-mail-from-command-line-using-gmail-smtp-server
-
-
-## Az időjárás-figyelő indítása
-### Égkép fotózása és feltöltése
-
-    cd ~/raspi-weathercam
-    python3 camloop.py
-    
-### Hőmérséklet mérése
-
-    cd ~/raspi-weathercam
-    ./startStop.sh
