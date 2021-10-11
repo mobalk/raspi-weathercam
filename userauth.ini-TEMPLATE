@@ -1,13 +1,10 @@
 # Copy this file to an appropriate place 
 # and adapt PathToUserAuthConfig in config.ini accordingly.
 [upload]
+# User name and password to the registered weather service (e.g. idokep.hu) to upload data
 User = exampleuser
 Pwd = yourpwd
 
 [email]
 # Email address to send alert messages. Needs `msmtp`.
 Address = user@gmail.com
-
-[thermo]
-# Optional: BCM number of the GPIO pin used for powering the sensor.
-PowerPin = -1

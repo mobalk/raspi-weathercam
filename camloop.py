@@ -104,7 +104,7 @@ def adjust_camera_exp_mode(camera, bright, expo_state):
 
     logging.debug("cropped brightness=%d, shutterspeed=%d", bright, camera.shutter_speed)
 
-    # Handle dark scene
+    # Handle dark scene #FIXME: configurable brightness treshold
     if bright < 20:
         if not manual_expo_mode(expo_state):
             expo_state["expo_mode"] = "manual"
@@ -123,7 +123,7 @@ def adjust_camera_exp_mode(camera, bright, expo_state):
             logging.warning(r"Too dark scene. ¯\_(ツ)_/¯")
             sleep(5 * SEC_PER_MIN)
 
-    # Handle bright scene in manual mode
+    # Handle bright scene in manual mode #FIXME: configurable value
     if manual_expo_mode(expo_state) and bright > 35:
         if expo_state["twilight_start"] <= today_at(0):
             expo_state["twilight_start"] = datetime.datetime.now()

@@ -39,3 +39,6 @@ sudo apt-get install python3-flask
 # program used is msmtp
 # configuration found in /etc/msmtprc --> use a user based config in ~/.msmtprc
 # chmod go-r ~/.msmtprc
+
+-- remote access with remote.it
+sudo apt install remote.it
