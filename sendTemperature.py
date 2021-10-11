@@ -13,6 +13,11 @@ config.init(path.join(path.split(path.realpath(__file__))[0], 'config.ini'))
 LOGFILE = path.join(config.get('app', 'PrivateDir'), 'sendTemp.log')
 logging.basicConfig(filename=LOGFILE, level=logging.INFO)
 
+if config.get('upload', 'User') == 'exampleuser':
+    print("Error: User configuration in " + config.get('app', 'PathToUserAuthConfig')
+    + " is missing")
+    exit()
+
 dbPath = config.get('app', 'PathToDatabase')
 conn = sqlite3.connect(dbPath)
 with conn:
