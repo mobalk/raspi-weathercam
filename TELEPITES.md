@@ -1,5 +1,9 @@
 # Részletes telepítési útmutató
 
+Útmutató az alapoktól: ha csak most ismerkedsz a Raspberry Pi-jal, kezd az elején.
+
+Ha egyből a lényegre térnél, ugorj ide: [Időjárás figyelő telepítése](TELEPITES.md#időjárás-figyelő-telepítése) 
+
 ## Kellékek
 ### Hardware
 
@@ -108,11 +112,107 @@ Indítsuk el ismét a fotó alkalmazást, de most nem készítünk képet, csak 
 
     raspistill -t 60000
     
-Ha az egy perc sem elég, elindíthatjuk az élőképet időkorlát nélkül is (ilyenkor Ctrl + C megnyomásával lehet a programból kilépni):
+Az élőkép segítségével próbáljuk a lencsét a fókusz gyűrűvel élesre állítani.
+
+A reteszt a teljesen nyitott pozíciónál egy kicsit lejjebb reteszeltem, abban bízva, hogy a mélységéllesség és az objektív rajzolata is kedvezőbb lesz. A teljes reteszelést az éjszakai fotók miatt kerültem.
+
+Ha egy perc nem volt elég, elindíthatjuk az élőképet időkorlát nélkül is (ilyenkor Ctrl + C megnyomásával lehet a programból kilépni):
 
     raspistill -t 0
 
 Ha azt tapasztaljuk, hogy a lencsétől csak néhány mm-re rajzol éles képet az objektív, akkor felmerül, hogy bennmaradt a "C/CS-mount" közgyűrű. Vegyük ki.
 
 ## Időjárás figyelő telepítése
-- [ ] **TODO**
+Kezdjük a RPi frissítésével a szokásos módon.
+
+    sudo apt update
+    sudo apt full-upgrade
+
+Másoljuk le a szoftvercsomagot az eszközre ("klónozzuk a repo-t").
+
+    git clone https://github.com/mobalk/raspi-weathercam.git
+    cd raspi-weathercam
+    ls
+    
+Ha minden jól ment, az eszközön rajta vannak a szükséges file-ok.
+
+### Külső software-függőségek
+A DHT22 hőmérséklet szenzor használatához a következő Python könyvtárakra lesz szükség.
+
+    pip3 install adafruit-circuitpython-dht
+    sudo apt-get install libgpiod2
+
+A `viewerstat.sh` parancsfile automatikus E-Mail küldésre az `msmtp` programot használja. Beállítását lásd később.
+
+    sudo apt install msmtp
+    
+#### Opcionális programok
+Jól jöhet egy egyszerű képszerkesztő a kamera-képkivágás paraméterezéséhez. 
+
+    sudo apt install mirage
+    
+A log file-ok egyidejű vizsgálatához ajánlott:
+
+    sudo apt install multitail
+    
+Egy példa *alias* a használatára, amit a `~/.bash_aliases` file-ba másolhatunk:
+    alias log='multitail -s 2 -sn 1,3 ~/raspi-weathercam/weathercam.log ~/raspi-weathercam/temperature.log ~/.raspi-weathercam/sendTemp.log ~/.raspi-weathercam/viewerstat.csv'
+
+### Beállítások
+A program-beállításokat két file tartalmazza:
+
+* [config.ini](config.ini) - ez tartalmazza az általános beállításokat
+* [userauth.ini](userauth.ini-TEMPLATE) - ebben tároljuk a személyes adatokat, amelyekkel pl. az idokep.hu-ra be tudunk lépni
+
+    nano config.ini
+
+Nézzük át az alapértelmezett beállításokat:
+* adatbázis neve és helye
+* a személyes beállításokat tartalmazó file neve és helye
+* a kívánt kamera felbontás - erről később még lesz szó
+* stb.
+
+Másoljuk át a személyes beállításokat tartalmazó TEMPLATE file-t a kívánt helyre és módosítsuk azt.
+
+    mkdir ~/.raspi-weathercam
+    cp userauth.ini-TEMPLATE ~/.raspi-weathercam/userauth.ini
+    nano ~/.raspi-weathercam/userauth.ini
+
+### Időzített futtatások
+Néhány parancsfile-t időzítetten célszerű futtatni, ehhez Linux cron bejegyzéseket készítünk.
+
+    crontab -e
+
+Másoljuk be a lenti beállításokat a terminálba:
+
+```shell
+# m h  dom mon dow   command
+59 5,9,13,17,21,23 * * * /home/pi/raspi-weathercam/viewerstat.sh
+*/3 * * * *  /home/pi/raspi-weathercam/sendTemperature.py
+0 1 * * * /home/pi/raspi-weathercam/arch.py > /home/pi/.raspi-weathercam/arch_cron.log 2>&1
+```
+
+* `viewerstat.sh` - Naponta hatszor ránéz a kameraképünkre és elmenti a látogatószámot. Ha a kamerakép nem elérhető, email-t küld.
+* `sendTemperate.py` - 3 percenként elküldi az utolsó hőmérsékleti adatok átlagát
+* `arch.py` - naponta archiválja az x napnál régebbi képeket (lekicsinyíti és dátum szerint az `~/Pictures/idokep/arch` könyvtárba másolja.
+   Az eredeti törlésre kerül.
+### Automatikus e-mail
+A következő cikkeket javaslom a helyes konfigurációhoz: 
+
+* https://techrapiduk.blogspot.com/2017/04/send-email-on-raspberry-pi-with-msmtp.html
+* https://www.howtoraspberry.com/2021/06/how-to-send-mail-from-a-raspberry-pi/
+* A google account-ot is be kell állítani, hogy elfogadja a nem túl biztonságos csak jelszó alapú autentikációt.
+  Lehet, hogy célszerű ehhez egy csak erre használt új Gmail email cím készítése:
+  https://stackoverflow.com/questions/38391412/raspberry-pi-send-mail-from-command-line-using-gmail-smtp-server
+
+
+## Az időjárás-figyelő indítása
+### Égkép fotózása és feltöltése
+
+    cd ~/raspi-weathercam
+    python3 camloop.py
+    
+### Hőmérséklet mérése
+
+    cd ~/raspi-weathercam
+    ./startStop.sh
