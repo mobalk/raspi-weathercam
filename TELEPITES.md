@@ -156,6 +156,7 @@ A log file-ok egyidejű vizsgálatához ajánlott:
     sudo apt install multitail
     
 Egy példa *alias* a használatára, amit a `~/.bash_aliases` file-ba másolhatunk:
+
     alias log='multitail -s 2 -sn 1,3 ~/raspi-weathercam/weathercam.log ~/raspi-weathercam/temperature.log ~/.raspi-weathercam/sendTemp.log ~/.raspi-weathercam/viewerstat.csv'
 
 ### Beállítások
@@ -164,7 +165,9 @@ A program-beállításokat két file tartalmazza:
 * [config.ini](config.ini) - ez tartalmazza az általános beállításokat
 * [userauth.ini](userauth.ini-TEMPLATE) - ebben tároljuk a személyes adatokat, amelyekkel pl. az idokep.hu-ra be tudunk lépni
 
-    nano config.ini
+```shell
+nano config.ini
+```
 
 Nézzük át az alapértelmezett beállításokat:
 * adatbázis neve és helye
@@ -183,7 +186,7 @@ Néhány parancsfile-t időzítetten célszerű futtatni, ehhez Linux cron bejeg
 
     crontab -e
 
-Másoljuk be a lenti beállításokat a terminálba:
+Másoljuk be a lenti beállításokat `cron` bejegyzések végére:
 
 ```shell
 # m h  dom mon dow   command
