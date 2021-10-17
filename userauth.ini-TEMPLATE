@@ -8,3 +8,8 @@ Pwd = yourpwd
 [email]
 # Email address to send alert messages. Needs `msmtp`.
 Address = user@gmail.com
+
+[flask]
+# User specific content displayed  on the local webpage
+# [HU] A pro.idokep.hu oldalon "Saját honlapba illeszthető modul" iframe kódja
+usercontent = 

@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Aktuális hőmérséklet</title>
+  </head>
+  <body>
+  <table>
+    <tbody>
+      <tr>
+        <td align="left" style="vertical-align:top; padding=20px">
+	  <p style="font-size:20px">Hőmérséklet:<br> <strong>{{ temp }} °C</strong></p>
+	  <p style="font-size:20px">Páratartalom:<br> <strong>{{ hum }} %</strong></p>
+          <p style="font-size:16px">Utolsó mérés:<br> {{ time }}</p>
+	</td>
+	<td align="center">
+	  {{ iframe|safe }}
+	</td>
+      </tr>
+      <tr>
+        <td colspan="2">
+	  <img style="max-width:100%;" src=static/{{ chart }}>
+	</td>
+      </tr>
+    </tbody>
+  </table>
+  </body>
+</html>
