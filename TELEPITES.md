@@ -122,6 +122,33 @@ Ha egy perc nem volt elég, elindíthatjuk az élőképet időkorlát nélkül i
 
 Ha azt tapasztaljuk, hogy a lencsétől csak néhány mm-re rajzol éles képet az objektív, akkor felmerül, hogy bennmaradt a "C/CS-mount" közgyűrű. Vegyük ki.
 
+### Hőmérő szenzor bekötése
+Lásd még: [angol nyelvű leírás](https://pimylifeup.com/raspberry-pi-humidity-sensor-dht22/)
+
+A DHT22 szenzor lábait kössük a megfelelő GPIO tüskékre:
+1. táp. Alapesetben 3.3V (1. fizikai tüske)
+2. adat. Valamely GPIO tüske. Alapesetben a [GPIO4](https://pinout.xyz/pinout/pin7_gpio4#)-en várja a program az adatot. `config.ini`-ben konfigurálható.
+3. nem használt
+4. föld, pl. 6. fizikai tüske
+
+Felhúzó ellenállást nem szükséges bekötni, a RPi adat tüskéjét a program szoftveresen felhúzza 1-es szintre.
+
+#### Alternatív táp megoldások
+Ha a szenzor nagyon távol (> 5m) van a RPi-től gyengülhet a jel. Ha problémát tapasztalunk a nagy távolság miatt, megpróbálhatjuk a a DHT22-t 5V-ra kötni.
+
+Az én esetemben a nagy távolság (de lehet, hogy egyéb kontakt problémák) miatt a DHT22 rendszeresen leállt, nem lehetett adatot kiolvasni. Ilyenkor a csatlakozó fizikai széthúzása és összedugása megoldotta a problémát. Ennek nyomán megpróbáltam egy távolról vezérelhető be/ki kapcsolót a programba építeni.
+
+A szenzor bekötése annyiban változik, hogy a tápot nem a fix 3.3V-ról vesszük, hanem az egyik GPIO tüskét használom kimenetnek.
+Ha a program 5 egymást követő alkalommal sem tud a DHT22-vel kommunikálni, leveszi a 'táp' GPIO tüske jelszintjét 0-ra, majd pár másodperc múlva visszaállítja 1-re. Ezzel a trükkel sikerült tartós megoldást találni az egyébként nehezen kinyomozható instabilitásra.
+
+Ha a fenti GPIO-ról vezérelt tápot szeretnénk alkalmazni, módosítsuk a `config.ini`-t például az alábbiak szerint:
+
+    PowerPin = 22
+
+Ezzel a program a [GPIO22](https://pinout.xyz/pinout/pin15_gpio22#) tüskét fogja vezérelni. A DHT22-es tápját erre kössük rá.
+
+###
+
 ## Idokep.hu regisztráció
 Ha fel szeretnénk tölteni a kamera képét az idokep.hu-ra, regisztrálnunk kell egy felhasználót:
 https://www.idokep.hu/regisztracio
@@ -210,14 +237,31 @@ A következő cikkeket javaslom a helyes konfigurációhoz:
     cd ~/raspi-weathercam
     python3 camloop.py
     
+A futási log-ot itt tekinthetjük meg:
+
+    tail -f weathercam.log
+    
+Az elkészült képeket a `config.ini`-ben beállított mappában (`~/Pictures/idokep`) találjuk.
+Ha az idokep account-ot még nem állítottuk be a `userAuth.ini` file-ban, akkor a program csak elmenti a képeket, de nem tölti fel őket.
+
 ### Hőmérséklet mérése
 
     cd ~/raspi-weathercam
-    ./startStop.sh
+    python3 thermometer.py
+
+A futási log-ot itt tekinthetjük meg:
+
+    tail -f temperature.log
+    
+A mérési eredményeket a program `config.ini`-ben beállított adatbázisban tárolja.
 
 ### Időzített futtatások
 Ha a fenti programok gond nélkül üzemelnek, ismerkedjünk meg további parancsfile-okkal amelyeket időzítetten célszerű futtatni.
-Ehhez Linux cron bejegyzéseket készítünk.
+
+**Fontos**, hogy mielőtt az időképre feltöltjük az adatainkat, győződjünk meg arról, hogy a hőmérő program tartósan (napokon keresztül) helyesen működik.
+Vessük össze a mért adatainkat a környékről beküldött más automaták mintáival.
+
+Az időzített parancsokhoz Linux cron bejegyzéseket készítünk.
 
     crontab -e
 
@@ -225,12 +269,18 @@ Másoljuk be a lenti beállításokat `cron` bejegyzések végére:
 
 ```shell
 # m h  dom mon dow   command
-59 5,9,13,17,21,23 * * * /home/pi/raspi-weathercam/viewerstat.sh
 */3 * * * *  /home/pi/raspi-weathercam/sendTemperature.py
+59 5,9,13,17,21,23 * * * /home/pi/raspi-weathercam/viewerstat.sh
 0 1 * * * /home/pi/raspi-weathercam/arch.py > /home/pi/.raspi-weathercam/arch_cron.log 2>&1
 ```
 
-* `viewerstat.sh` - Naponta hatszor ránéz a kameraképünkre és elmenti a látogatószámot. Ha a kamerakép nem elérhető, email-t küld.
 * `sendTemperate.py` - 3 percenként elküldi az utolsó hőmérsékleti adatok átlagát
+* `viewerstat.sh` - Naponta hatszor ránéz a kameraképünkre és elmenti a látogatószámot. Ha a kamerakép nem elérhető, email-t küld.
 * `arch.py` - naponta archiválja az x napnál régebbi képeket (lekicsinyíti és dátum szerint az `~/Pictures/idokep/arch` könyvtárba másolja.
    Az eredeti törlésre kerül.
+
+Fenti időzített futásokat átmenetileg kikapcsolhatjuk, ha a megfelelő parancsot egy sor eleji `#`-el kikommentezzük.
+
+# Kérdés, észrevétel, panasz
+
+    mobalkhu at gmail dot com
