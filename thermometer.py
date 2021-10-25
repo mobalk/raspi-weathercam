@@ -5,8 +5,8 @@ import time
 import sqlite3
 import logging
 
-import board
 import adafruit_dht
+import board
 from gpiozero.pins.rpigpio import RPiGPIOFactory, RPiGPIOPin
 
 import config
@@ -16,6 +16,14 @@ LOGFILE = "temperature.log"
 logging.basicConfig(filename=LOGFILE, level=logging.INFO)
 #logging.basicConfig(level=logging.INFO)
 print("Logging to " + LOGFILE)
+
+def get_data_pin():
+    """ Return board.pin object used for data, configured with BCM number """
+    configured_pin = config.getint('thermo', 'DataPin', fallback=-1)
+    assert configured_pin > 0
+    pin = board.pin.Pin(configured_pin)
+    pin.init(mode=board.pin.Pin.IN, pull=board.pin.Pin.PULL_UP)
+    return pin
 
 def get_power_pin():
     """ Return BCM number of the power pin - if configured so """
@@ -57,6 +65,7 @@ def check_for_validity(temp, last_temp):
         last_temp = temp
     return (valid, last_temp)
 
+dataPin = get_data_pin()
 powerPin = get_power_pin()
 # turn off the sensor then on again
 power_switch(powerPin, 0)
@@ -64,7 +73,7 @@ time.sleep(3)
 power_switch(powerPin, 1)
 
 # Initiate the dht device, with data pin connected to:
-dhtDevice = adafruit_dht.DHT22(board.D4, use_pulseio=False)
+dhtDevice = adafruit_dht.DHT22(dataPin, use_pulseio=False)
 
 dbPath = config.get('app', 'PathToDatabase')
 
