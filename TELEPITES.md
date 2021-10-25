@@ -255,6 +255,20 @@ A futási log-ot itt tekinthetjük meg:
     
 A mérési eredményeket a program `config.ini`-ben beállított adatbázisban tárolja.
 
+### Mért adatok megjelenítése
+A napi hőmérsékleti adatokat kirajzolhatjik grafikonokon.
+Ehhez szükség van további segéd könyvtárak telepítésére:
+
+    pip3 install pandas
+    
+Napi hőmérséklet és páratartalom grafikon
+
+    python3 plot_today_temp.py
+    
+Napi hőmérséklet az elmúlt hét átlagával együtt
+
+    python3 plot_temp_stat.py
+
 ### Időzített futtatások
 Ha a fenti programok gond nélkül üzemelnek, ismerkedjünk meg további parancsfile-okkal amelyeket időzítetten célszerű futtatni.
 
