@@ -108,17 +108,19 @@ Az LXTerminal ablakba írjuk be:
 Ha minden jól megy, egy pár másodperc után elkészül az első fotónk.
 
 #### Élesség állítás
-Indítsuk el ismét a fotó alkalmazást, de most nem készítünk képet, csak az élő képet szeretnék tartósan megjeleníteni (1 percig)
+Indítsuk el ismét a fotó alkalmazást, de most nem készítünk képet, hanem az élő képet szeretnék 1 percig megjeleníteni. 
+A ``focus`` paraméter használatával a kép közepén folyamatosan megjelenik egy számított élesség-érték.
 
-    raspistill -t 60000
+    raspistill -t 60000 --focus
     
 Az élőkép segítségével próbáljuk a lencsét a fókusz gyűrűvel élesre állítani.
 
 A reteszt a teljesen nyitott pozíciónál egy kicsit lejjebb reteszeltem, abban bízva, hogy a mélységéllesség és az objektív rajzolata is kedvezőbb lesz. A teljes reteszelést az éjszakai fotók miatt kerültem.
 
-Ha egy perc nem volt elég, elindíthatjuk az élőképet időkorlát nélkül is (ilyenkor Ctrl + C megnyomásával lehet a programból kilépni):
+Ha egy perc nem volt elég, elindíthatjuk az élőképet időkorlát nélkül is ``-t 0`` (ilyenkor Ctrl + C megnyomásával lehet a programból kilépni).
+Ezen kívül az élő képet ráközelíthetjük a kép közepére ami megkönnyíti az élességállítást:
 
-    raspistill -t 0
+    raspistill -t 0 --focus -roi 0.35,0.35,0.3,0.3
 
 Ha azt tapasztaljuk, hogy a lencsétől csak néhány mm-re rajzol éles képet az objektív, akkor felmerül, hogy bennmaradt a "C/CS-mount" közgyűrű. Vegyük ki.
 
