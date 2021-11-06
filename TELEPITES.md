@@ -269,7 +269,7 @@ Napi hőmérséklet és páratartalom grafikon
     
 Napi hőmérséklet az elmúlt hét átlagával együtt
 
-    python3 plot_temp_stat.py
+    python3 plot_stat.py
 
 ### Időzített futtatások
 Ha a fenti programok gond nélkül üzemelnek, ismerkedjünk meg további parancsfile-okkal amelyeket időzítetten célszerű futtatni.

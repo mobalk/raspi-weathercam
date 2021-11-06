@@ -9,7 +9,7 @@ import sys
 sys.path.insert(0,'..')
 
 import config
-import plot_temp_stat
+import plot_stat
 conf = config.init('../config.ini')
 config.read(conf)
 dbPath = conf.get('app', 'PathToDatabase')
@@ -45,7 +45,7 @@ def getChartStorePath(t, gran):
     return title
 
 def storeTempStatChart(title, gran=15):
-   plot_temp_stat.save_plot(title, str(gran) + 'T')
+   plot_stat.save_temp_plot(title, str(gran) + 'T')
 
 def secToDelta(sec):
     if sec < 60:

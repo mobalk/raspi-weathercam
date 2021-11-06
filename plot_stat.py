@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import sys
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -24,7 +25,7 @@ def _create_time_pivot(table, onvalue, gran):
     time_pivot = resamp.pivot(index='time', columns='date', values=onvalue)
     return time_pivot
 
-def _compile_chart(data, gran):
+def _compile_chart(data, y_label, gran):
     table = _read_db(data, 6)
     if not table.empty:
         table.set_index('ts')
@@ -58,18 +59,29 @@ def _compile_chart(data, gran):
         plt.plot(tdi, pivo_nice.iloc[:, (numDateCols - 1)], color="navy", label="Mai mérés")
 
         plt.xlim([tdi[0], tdi[-1]])
-        plt.ylabel("hőmérséklet (°C)")
+        plt.ylabel(y_label)
         plt.legend()
         plt.grid()
         fig.tight_layout()
 
-def show_plot():
-    _compile_chart('temp', '15T')
+def show_hum_plot():
+    _compile_chart('hum', 'páratartalom (%)', '15T')
     plt.show()
 
-def save_plot(path, gran='15T'):
-    _compile_chart('temp', gran)
+def save_hum_plot(path, gran='15T'):
+    _compile_chart('hum', 'páratartalom (%)', gran)
+    plt.savefig(path)
+
+def show_temp_plot():
+    _compile_chart('temp', "hőmérséklet (°C)", '15T')
+    plt.show()
+
+def save_temp_plot(path, gran='15T'):
+    _compile_chart('temp', "hőmérséklet (°C)", gran)
     plt.savefig(path)
 
 if __name__ == "__main__":
-    show_plot()
+    if len(sys.argv) > 1 and sys.argv[1] == 'hum':
+            show_hum_plot()
+    else:
+        show_temp_plot()
