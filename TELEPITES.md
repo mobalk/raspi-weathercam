@@ -5,7 +5,8 @@
 Ha egyből a lényegre térnél, ugorj ide: [Időjárás figyelő telepítése](TELEPITES.md#időjárás-figyelő-telepítése) 
 
 ## Kellékek
-### Hardware
+
+![Kellékek](img/001.png)
 
 * Raspberry Pi mini számítógép
   * A programot a [Raspberry Pi 3B+](https://www.raspberrypi.com/products/raspberry-pi-3-model-b-plus/)
@@ -31,11 +32,6 @@ Ha egyből a lényegre térnél, ugorj ide: [Időjárás figyelő telepítése](
      * billentyűzet, egér. A RPi 3A-nak egyetlen USB kimenete van, ehhez én egy touchpad-del ellátott vezeték nélküli
        billentyűzetet használtam.
      * SD kártya: A RPi-nek ez a belső tárhelye, az operációs rendszer és az alkalmazás is erről fut.
-
-- [ ] **TODO** képek
-
-### Software
-- [ ] **TODO**
 
 ## Raspberry Pi üzembe helyezése
 ### Raspberry Pi OS telepítése
@@ -290,7 +286,7 @@ Másoljuk be a lenti beállításokat `cron` bejegyzések végére:
 0 1 * * * /home/pi/raspi-weathercam/arch.py > /home/pi/.raspi-weathercam/arch_cron.log 2>&1
 ```
 
-* `sendTemperate.py` - 3 percenként elküldi az utolsó hőmérsékleti adatok átlagát
+* `sendTemperature.py` - 3 percenként elküldi az utolsó hőmérsékleti adatok átlagát
 * `viewerstat.sh` - Naponta hatszor ránéz a kameraképünkre és elmenti a látogatószámot. Ha a kamerakép nem elérhető, email-t küld.
 * `arch.py` - naponta archiválja az x napnál régebbi képeket (lekicsinyíti és dátum szerint az `~/Pictures/idokep/arch` könyvtárba másolja.
    Az eredeti törlésre kerül.
