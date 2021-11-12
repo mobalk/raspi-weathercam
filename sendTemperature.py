@@ -13,10 +13,10 @@ config.init(path.join(path.split(path.realpath(__file__))[0], 'config.ini'))
 LOGFILE = path.join(config.get('app', 'PrivateDir'), 'sendTemp.log')
 logging.basicConfig(filename=LOGFILE, level=logging.INFO)
 
-if config.get('upload', 'User') == 'exampleuser':
-    print("Error: User configuration in " + config.get('app', 'PathToUserAuthConfig')
-    + " is missing")
-    exit()
+assert config.get('upload', 'User') != 'exampleuser', "[upload] / User configuration missing in userAuth.ini"
+
+wsAddress = config.get('upload', 'WeatherServiceAddress', fallback="")
+assert wsAddress, "WeatherServiceAddress in config.ini missing"
 
 dbPath = config.get('app', 'PathToDatabase')
 conn = sqlite3.connect(dbPath)
@@ -29,23 +29,14 @@ with conn:
     (temp, hum) = cur.fetchone()
     if temp and hum:
         logging.info(time.strftime("%Y.%m.%d %H:%M   temp=") + str(temp) + ', hum=' + str(hum))
-        url = ('http://pro.idokep.hu/sendws.php?user='
-               + config.get('upload', 'User')
-               + '&pass='
-               + config.get('upload', 'Pwd')
-               + '&tipus=RaspberryPi&hom='
-               + str(temp)
-               + '&rh='
-               + str(int(hum)))
+        url = (wsAddress
+               + '?user=' + config.get('upload', 'User')
+               + '&pass=' + config.get('upload', 'Pwd')
+               + '&tipus=RaspberryPi'
+               + '&hom=' + str(temp)
+               + '&rh=' + str(int(hum)))
         logging.debug(url)
-        r = requests.get('http://pro.idokep.hu/sendws.php?user='
-                         + config.get('upload', 'User')
-                         + '&pass='
-                         + config.get('upload', 'Pwd')
-                         + '&tipus=RaspberryPi&hom='
-                         + str(temp)
-                         + '&rh='
-                         + str(hum))
+        r = requests.get(url)
         if r.status_code == 200 and b'sikeres' in r.content:
             logging.info('OK')
         else:
