@@ -81,7 +81,16 @@ for filename in sorted(os.listdir(directory)):
         continue
 
     newsize = (int(im1.width * factor), int(im1.height * factor))
-    im1 = im1.resize(newsize, resample = Image.LANCZOS)
+    try:
+        im1 = im1.resize(newsize, resample = Image.LANCZOS)
+    except OSError:
+        print("Cannot resize" , fPath)
+        if delete:
+            print("Delete", fPath)
+            if not dryRun:
+                os.remove(fPath)
+        continue
+
     if os.path.exists(newPath) and ans != "O":
         if ans == "S": continue
         print(newPath + " exists. What to do?")
