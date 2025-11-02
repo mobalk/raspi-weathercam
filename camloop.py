@@ -46,6 +46,7 @@ def get_extra_line_wrap():
 def ftp_upload(img):
     """ Upload the image to the configured ftp address. """
     server = config.get('upload', 'FtpAddress', fallback='')
+    logging.debug("ftp server: " + server)
     if server:
         user = config.get('upload', 'User')
         logging.debug("upload to " + server + " as " + user)
@@ -170,6 +171,7 @@ def adjust_camera_exp_mode(camera, bright, expo_state):
 
         logging.debug("reduced shutterspeed=%d (by %d)",
                       camera.shutter_speed, (cam_ss_now - camera.shutter_speed))
+    logging.debug(" skip this loop: %d", skip_current_loop)
     return skip_current_loop
 
 def set_resolution(camera):
