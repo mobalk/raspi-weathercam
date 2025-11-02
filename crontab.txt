@@ -1,0 +1,14 @@
+# Saved crontab. Run `crontab crontab.txt` to activate it.
+#
+# Edit this file to introduce tasks to be run by cron.
+# 
+# To define the time you can provide concrete values for
+# minute (m), hour (h), day of month (dom), month (mon),
+# and day of week (dow) or use '*' in these fields (for 'any').
+# 
+# m h  dom mon dow   command
+#*/3 * * * * ~/proj/raspi-weathercam/sendTemperature.py
+59 5,9,13,17,21,23 * * * ~/proj/raspi-weathercam/viewerstat.sh
+0 1 * * * ~/proj/raspi-weathercam/arch.py > ~/.raspi-weathercam/arch_cron.log 2>&1
+@reboot cd ~/proj/raspi-weathercam && ./camloop.py > cam-cron.log 2>&1
+
