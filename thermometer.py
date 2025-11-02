@@ -8,6 +8,7 @@ import logging
 import adafruit_dht
 import board
 from gpiozero.pins.rpigpio import RPiGPIOFactory, RPiGPIOPin
+from gpiozero import LED
 
 import config
 
@@ -29,13 +30,19 @@ def get_power_pin():
     """ Return BCM number of the power pin - if configured so """
     configured_pin = config.getint('thermo', 'PowerPin', fallback=-1)
     if configured_pin != -1:
-        return RPiGPIOPin(RPiGPIOFactory(), configured_pin)
+        led = LED(configured_pin)
+        return led
+        #return RPiGPIOPin(RPiGPIOFactory(), configured_pin)
     return None
 
 def power_switch(pin, state):
     """ Turn on or off the given GPIO pin """
     if pin:
-        pin.output_with_state(state)
+        if state == 1:
+            pin.on()
+        else:
+            pin.off()
+        #pin.output_with_state(state)
 
 def have_you_tried_turning_it_off_and_on_again(pin):
     """ Hello, IT. Have you tried turning it off ans on again? """
