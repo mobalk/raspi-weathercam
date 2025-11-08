@@ -1,5 +1,3 @@
-# Saved crontab. Run `crontab crontab.txt` to activate it.
-#
 # Edit this file to introduce tasks to be run by cron.
 # 
 # To define the time you can provide concrete values for
@@ -9,6 +7,8 @@
 # Output of the crontab jobs (including errors) is sent through
 # email to the user the crontab file belongs to (unless redirected).
 # 
+# For more information see the manual pages of crontab(5) and cron(8)
+# 
 # m h  dom mon dow   command
 * * * * * /home/capri/raspi-weathercam/timelapse.sh 2>&1
 */3 * * * *  /home/capri/raspi-weathercam/sendTemperature.py
@@ -16,3 +16,5 @@
 0 1 * * * /home/capri/raspi-weathercam/arch.py > /home/capri/.raspiwcam/arch_cron.log 2>&1
 @reboot cd ~/raspi-weathercam && python3 picloop.py > picloop-cron.log 2>&1 
 @reboot cd ~/raspi-weathercam && source ./env/bin/activate && python3 ./thermometer.py 
+@reboot source ~/raspi-weathercam/env/bin/activate &&  python3 ~/raspi-weathercam/thermometer.py
+
