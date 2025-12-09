@@ -1,18 +1,31 @@
 #!/bin/bash
 DATE=$(date +"%Y-%m-%d_%H%M%S")
 
-rpicam-still --nopreview --metering average --ev 0.5 -o /tmp/$DATE.jpg
-brightness=$(convert "/tmp/$DATE.jpg" -colorspace Gray -format "%[fx:mean]" info:)
+CAMPARAM="--nopreview --rotation 180 --flicker-period 10000us --autofocus-mode manual --lens-position 2.7" 
+TEMPFILE="/tmp/$DATE.jpg"
+
+rpicam-still $CAMPARAM -o $TEMPFILE
+echo "CAPTURED"
+
+brightness=$(python3 brightness.py "$TEMPFILE")
+echo "BRIGHTNESS $brightness"
 
 daynnight="DAY  "
-if (( $(echo "$brightness < 0.03" | bc -l) )); then
+if (( $(echo "$brightness < 0.04" | bc -l) )); then
 	# image too dark, shoot another one
-	rm /tmp/$DATE.jpg
+	rm $TEMPFILE
 	daynnight="NIGHT"
-	# exp = 1.4 sec, ISO 400
-	rpicam-still --nopreview -o /tmp/$DATE.jpg --shutter 1400000 --gain 4
-	brightness=$(convert "/tmp/$DATE.jpg" -colorspace Gray -format "%[fx:mean]" info:)
+	rpicam-still $CAMPARAM --shutter 2500000 --gain 4 -o $TEMPFILE
+	newbrightness=$(python3 brightness.py "$TEMPFILE")
 fi
 
-echo "$DATE $daynnight $brightness" >> ~/timelapse.log
-mv /tmp/$DATE.jpg ~/Pictures/raw/$DATE.jpg
+if (( $(echo "$newbrightness < 0.033" | bc -l) )); then
+	# image still too dark, shoot another one
+	rm $TEMPFILE
+	daynnight="DARK "
+	rpicam-still $CAMPARAM --shutter 3800000 --gain 4 -o $TEMPFILE
+	new2brightness=$(python3 brightness.py "$TEMPFILE")
+fi
+
+echo "$DATE $daynnight $brightness $newbrightness $new2brightness" >> ~/timelapse.log
+mv $TEMPFILE ~/Pictures/raw/$DATE.jpg
